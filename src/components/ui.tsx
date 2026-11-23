@@ -1,4 +1,5 @@
 import { useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import type { CSSProperties, ReactNode } from 'react'
 import type { Profile } from '../types'
 import { Icon } from './Icons'
@@ -24,11 +25,14 @@ export function Sheet({ open, onClose, title, children }: { open: boolean; onClo
     if (!open) return
     const k = (e: KeyboardEvent) => e.key === 'Escape' && onClose()
     window.addEventListener('keydown', k)
-    return () => window.removeEventListener('keydown', k)
+    const prev = document.body.style.overflow
+    document.body.style.overflow = 'hidden'   // a página atrás não rola enquanto a janela está aberta
+    return () => { window.removeEventListener('keydown', k); document.body.style.overflow = prev }
   }, [open, onClose])
   if (!open) return null
-  return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center" role="dialog" aria-modal="true" aria-label={title}>
+  // Portal: a janela sai do <main> e fica acima do menu de navegação e do rodapé.
+  return createPortal(
+    <div className="fixed inset-0 z-[80] flex items-end justify-center sm:items-center" role="dialog" aria-modal="true" aria-label={title}>
       <button aria-label="Fechar" onClick={onClose} className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
       <div className="sheet relative max-h-[92dvh] w-full max-w-lg overflow-y-auto rounded-t-3xl border border-white/10 bg-night-2 p-5 sm:rounded-3xl">
         <header className="mb-4 flex items-center justify-between">
@@ -37,7 +41,8 @@ export function Sheet({ open, onClose, title, children }: { open: boolean; onClo
         </header>
         {children}
       </div>
-    </div>
+    </div>,
+    document.body,
   )
 }
 

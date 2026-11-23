@@ -124,7 +124,7 @@ const swag = (t: number, b: number, w: number) => {
 type Props = { model: TreeModel; ornaments?: Ornament[]; onPick?: (o: Ornament) => void; animated?: boolean; base?: boolean; sealed?: boolean; lights?: LightsKey; topper?: TopperKey; side?: Side; scene?: SceneKey; backdrop?: boolean; tags?: boolean; slots?: { free: number[]; onPick: (n: number) => void } } & SVGProps<SVGSVGElement>
 
 export function Tree({ model, ornaments = [], onPick, animated = true, base = true, sealed = true, lights, topper = 'estrela', side = 'frente', scene = 'neve', backdrop = false, tags = true, slots, ...svg }: Props) {
-  const id = useId().replace(/:/g, ''), p = MODELS[model], u = (s: string) => `url(#${id}${s})`
+  const id = useId().replace(/[^a-zA-Z0-9_-]/g, ''), p = MODELS[model], u = (s: string) => `url(#${id}${s})`
   const tw = animated ? 'twinkle' : undefined
   const lc = lights ? LIGHTS[lights].colors : p.lights
   const sw = TIERS.map((r) => swag(r.t, r.b, r.w))
@@ -185,7 +185,7 @@ export function Tree({ model, ornaments = [], onPick, animated = true, base = tr
       })}
       {ornaments.filter((o) => o.side === side).map((o) => {
         const [x, y] = SLOTS[o.slot] ?? SLOTS[0], s = 0.95
-        const label = `@${o.from.length > 12 ? o.from.slice(0, 11) + '…' : o.from}`, w = label.length * 4.8 + 9
+        const label = o.from ? `@${o.from.length > 12 ? o.from.slice(0, 11) + '…' : o.from}` : 'oculto', w = label.length * 4.8 + 9
         const act = onPick ? () => onPick(o) : undefined
         return (
           <g key={o.id}>

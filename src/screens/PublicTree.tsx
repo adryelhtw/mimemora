@@ -5,21 +5,25 @@ import { SIDE_CAP } from '../events/natal-2026/Tree'
 import { SideSwitch, TreeFlip } from '../events/natal-2026/TreeFlip'
 import { Countdown } from '../events/natal-2026/Countdown'
 import { DecorateSheet } from '../components/DecorateSheet'
+import { BlockSheet } from '../components/BlockSheet'
+import { MusicPlayer } from '../components/MusicPlayer'
 import { Avatar } from '../components/ui'
-import { fetchPublic } from '../lib/api'
+import { errText, fetchIsFollowing, fetchPublic, setFollow } from '../lib/api'
 import type { PlaceFn } from '../lib/api'
 
 type State = { s: 'loading' } | { s: 'notfound' } | { s: 'notree'; owner: Profile } | { s: 'ok'; tree: TreeData }
-type Props = { me: Profile | null; eventId: string; onPlace: PlaceFn }
+type Props = { me: Profile | null; eventId: string; onPlace: PlaceFn; onNotify: (m: string) => void }
 
-// Página pública /u/:username. Mostra a árvore e os enfeites; as mensagens nunca chegam aqui.
-export function PublicTree({ me, eventId, onPlace }: Props) {
+// Página pública /u/:username (perfil + árvore). As mensagens nunca chegam aqui, e quem tem bloqueio com o dono não a encontra.
+export function PublicTree({ me, eventId, onPlace, onNotify }: Props) {
   const { username = '' } = useParams()
   const navigate = useNavigate()
   const { pathname } = useLocation()
   const [st, setSt] = useState<State>({ s: 'loading' })
   const [open, setOpen] = useState(false)
   const [side, setSide] = useState<Side>('frente')
+  const [following, setFollowing] = useState<boolean | null>(null)
+  const [blockOpen, setBlockOpen] = useState(false)
 
   const load = useCallback(async () => {
     try {
@@ -35,33 +39,68 @@ export function PublicTree({ me, eventId, onPlace }: Props) {
     return () => document.removeEventListener('visibilitychange', f)
   }, [load])
 
-  if (st.s === 'loading') return <p className="py-20 text-center text-cream/70">Carregando a árvore…</p>
-  if (st.s === 'notfound') return <p className="py-20 text-center text-cream/70">Não encontramos esse usuário. <Link to="/" className="text-gold">Voltar</Link></p>
-  if (st.s === 'notree') return <p className="py-20 text-center text-cream/70">@{st.owner.username} ainda não criou a árvore de Natal. <Link to="/" className="text-gold">Voltar</Link></p>
+  const owner = st.s === 'ok' ? st.tree.owner : st.s === 'notree' ? st.owner : null
+  const t = st.s === 'ok' ? st.tree : null
+  const isMe = !!me && !!owner && owner.username === me.username
+  useEffect(() => {
+    if (!me?.id || !owner?.id || isMe) { setFollowing(null); return }
+    let alive = true
+    fetchIsFollowing(me.id, owner.id).then((v) => alive && setFollowing(v)).catch(() => alive && setFollowing(null))
+    return () => { alive = false }
+  }, [me?.id, owner?.id, isMe])
 
-  const t = st.tree
-  const mine = !!me && t.owner.username === me.username
-  const done = !!me && t.ornaments.some((o) => o.from === me.username)
-  const counts: Record<Side, number> = { frente: t.ornaments.filter((o) => o.side === 'frente').length, verso: t.ornaments.filter((o) => o.side === 'verso').length }
+  if (st.s === 'loading') return <p className="py-20 text-center text-cream/70">Carregando a árvore…</p>
+  if (st.s === 'notfound' || !owner) return <p className="py-20 text-center text-cream/70">Não encontramos esse usuário. <Link to="/" className="text-gold">Voltar</Link></p>
+
+  const toggleFollow = async () => {
+    if (!me?.id || !owner.id || following === null) return
+    const next = !following
+    setFollowing(next)
+    try { await setFollow(me.id, owner.id, next); onNotify(next ? `Agora você segue @${owner.username}.` : `Você deixou de seguir @${owner.username}.`) }
+    catch (e) { setFollowing(!next); onNotify(errText(e)) }
+  }
+
+  const done = !!me && !!t && t.ornaments.some((o) => o.from === me.username)
+  const counts: Record<Side, number> = { frente: t?.ornaments.filter((o) => o.side === 'frente').length ?? 0, verso: t?.ornaments.filter((o) => o.side === 'verso').length ?? 0 }
   const full = counts.frente + counts.verso >= SIDE_CAP * 2
   const place = async (...a: [Parameters<PlaceFn>[1], string, Side, number]) => {
-    const e = await onPlace(t.id ?? '', ...a)
+    const e = await onPlace(t?.id ?? '', ...a)
     await load()   // atualiza as posições ocupadas (e mostra o novo enfeite)
     return e
   }
+
   return (
     <section className="mx-auto max-w-md space-y-5 text-center">
       <div className="flex flex-col items-center gap-1">
-        <Avatar p={t.owner} size={44} />
+        <Avatar p={owner} size={56} />
         <p className="font-display text-sm uppercase tracking-[.3em] text-gold">Natal 2026</p>
-        <h1 className="font-display text-3xl">Árvore de @{t.owner.username}</h1>
+        <h1 className="font-display text-3xl">Árvore de @{owner.username}</h1>
+        <p className="text-sm text-cream/70">{owner.name}</p>
+        {me && !isMe && <button onClick={toggleFollow} disabled={following === null} className={`mt-1 ${following ? 'rounded-full border border-gold/60 px-4 py-1.5 text-sm font-bold text-gold' : 'pill'}`}>{following ? 'deixar de seguir' : 'seguir'}</button>}
       </div>
-      <div className="relative"><div className="glow" /><TreeFlip side={side} model={t.model} lights={t.lights} topper={t.topper} scene={t.scene} backdrop ornaments={t.ornaments} className="relative mx-auto w-full max-w-[380px]" /></div>
-      <SideSwitch side={side} onSide={setSide} counts={counts} />
-      <Countdown compact />
-      {!mine && !me && <button className="cta" onClick={() => navigate(`/entrar?next=${encodeURIComponent(pathname)}`)}>Entrar para deixar um enfeite</button>}
-      {!mine && me && <button className="cta disabled:opacity-50" disabled={done || full} onClick={() => setOpen(true)}>{done ? 'Você já deixou seu enfeite ✓' : full ? 'Esta árvore já está cheia' : 'Deixar um enfeite'}</button>}
-      {me && <DecorateSheet target={open ? t : null} me={me} onClose={() => setOpen(false)} onPlace={place} />}
+
+      {t ? (
+        <>
+          <div className="relative"><div className="glow" /><TreeFlip side={side} model={t.model} lights={t.lights} topper={t.topper} scene={t.scene} backdrop ornaments={t.ornaments} className="relative mx-auto w-full max-w-[380px]" /></div>
+          <SideSwitch side={side} onSide={setSide} counts={counts} />
+          <Countdown compact />
+          {!isMe && !me && <button className="cta" onClick={() => navigate(`/entrar?next=${encodeURIComponent(pathname)}`)}>Entrar para deixar um enfeite</button>}
+          {!isMe && me && <button className="cta disabled:opacity-60" disabled={done || full} onClick={() => setOpen(true)}>{done ? 'Já enfeitou' : full ? 'Esta árvore já está cheia' : 'Deixar um enfeite'}</button>}
+          {me && <DecorateSheet target={open ? t : null} me={me} onClose={() => setOpen(false)} onPlace={place} />}
+        </>
+      ) : (
+        <p className="card p-6 text-cream/80">@{owner.username} ainda não criou a árvore de Natal.</p>
+      )}
+
+      {!isMe && owner.music && <MusicPlayer url={owner.music} owner={owner.username} />}
+
+      {me && !isMe && owner.id && (
+        <>
+          <button onClick={() => setBlockOpen(true)} className="text-xs text-cream/45 underline hover:text-cream/80">bloquear usuário</button>
+          <BlockSheet open={blockOpen} onClose={() => setBlockOpen(false)} target={{ id: owner.id, username: owner.username }}
+            onBlocked={(n) => { setBlockOpen(false); onNotify(n ? `Usuário bloqueado. ${n} ${n === 1 ? 'enfeite foi excluído' : 'enfeites foram excluídos'}.` : 'Usuário bloqueado.'); navigate('/', { replace: true }) }} />
+        </>
+      )}
     </section>
   )
 }

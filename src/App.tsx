@@ -4,10 +4,11 @@ import { BrowserRouter, Link, Navigate, NavLink, Route, Routes, useLocation, use
 import { CONTACT_EMAIL } from './config/app'
 import type { Look, TreeData } from './types'
 import { AuthProvider, useAuth } from './lib/auth'
-import { configured } from './lib/supabase'
+import { configStatus, configured } from './lib/supabase'
 import { createTree, fetchEvent, fetchPublic, isUnique, placeOrnament, toProfile } from './lib/api'
 import type { EventRow, PlaceFn } from './lib/api'
 import { clearDraft } from './lib/treeStore'
+import { publishCard } from './lib/card'
 import { Avatar, Snow, SnowToggle, Toast } from './components/ui'
 import { Icon } from './components/Icons'
 import type { IconName } from './components/Icons'
@@ -50,13 +51,16 @@ function AppRoutes() {
   const { ready, session, profile: db, profileError, reloadProfile, signOut } = useAuth()
   const [event, setEvent] = useState<EventRow | null | undefined>(undefined) // undefined = carregando
   const [eventErr, setEventErr] = useState('')
-  const [mine, setMine] = useState<TreeData | null | undefined>(undefined)  // minha árvore (null = ainda não criada)
+  const [mineBox, setMineBox] = useState<{ user: string; tree: TreeData | null } | null>(null)
   const [justCreated, setJustCreated] = useState(false)
   const [share, setShare] = useState(false)
   const [toast, setToast] = useState('')
   const [snow, setSnow] = useState(loadSnow)
   const username = db?.username ?? null
   const me = db && db.username ? toProfile(db) : null
+  // undefined = ainda carregando a árvore deste usuário (evita redirecionar para "criar árvore" por engano)
+  const mine: TreeData | null | undefined = !username ? null : mineBox?.user === username ? mineBox.tree : undefined
+  const setMine = (t: TreeData | null) => { if (username) setMineBox({ user: username, tree: t }) }
 
   const flash = (t: string) => { setToast(t); setTimeout(() => setToast(''), 4500) }
   const switchSnow = () => {
@@ -77,12 +81,13 @@ function AppRoutes() {
   }, [event, username])
 
   useEffect(() => {
-    if (!username) { setMine(null); return }
-    if (!event) return
+    if (!username || !event) return
     let alive = true
-    loadMine().then((t) => alive && setMine(t)).catch(() => alive && setMine(null))
+    fetchPublic(username, event.id)
+      .then((r) => alive && setMineBox({ user: username, tree: r?.tree ?? null }))
+      .catch(() => alive && setMineBox({ user: username, tree: null }))
     return () => { alive = false }
-  }, [username, event, loadMine])
+  }, [username, event])
 
   // Ao voltar para a aba, atualiza os enfeites recebidos.
   useEffect(() => {
@@ -90,6 +95,21 @@ function AppRoutes() {
     document.addEventListener('visibilitychange', f)
     return () => document.removeEventListener('visibilitychange', f)
   }, [loadMine])
+
+  // Mantém a imagem de compartilhamento (prévia do link) atualizada com a árvore e os enfeites recebidos.
+  useEffect(() => {
+    if (!db?.id || !username || !mine) return
+    const key = `${mine.model}|${mine.lights}|${mine.topper}|${mine.scene}|${mine.ornaments.map((o) => o.id).sort().join(',')}`
+    const ls = `card-key:${db.id}`
+    try { if (localStorage.getItem(ls) === key) return } catch { /* ok */ }
+    const t = setTimeout(() => {
+      publishCard(db.id, { username, model: mine.model, lights: mine.lights, topper: mine.topper, scene: mine.scene, ornaments: mine.ornaments }, db.card_url)
+        .then(() => { try { localStorage.setItem(ls, key) } catch { /* ok */ } })
+        .catch(() => undefined)
+    }, 2000)
+    return () => clearTimeout(t)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [db?.id, username, mine])
 
   // Quem veio de um link de amigo volta para ele, mas só depois de ter a própria árvore.
   const takeNext = () => {
@@ -128,7 +148,7 @@ function AppRoutes() {
   const look: Look | null = mine?.lights && mine.topper && mine.scene ? { model: mine.model, lights: mine.lights, topper: mine.topper, scene: mine.scene } : null
 
   let content: ReactElement
-  if (!configured) content = <Notice title="Falta configurar o Supabase">Confira o arquivo .env.local: VITE_SUPABASE_URL deve começar com https:// e VITE_SUPABASE_ANON_KEY deve ter a chave completa, sem aspas. Depois, pare e rode de novo o npm run dev.</Notice>
+  if (!configured) content = <Notice title="Falta configurar o Supabase">{`O site recebeu: VITE_SUPABASE_URL = ${configStatus.url}${configStatus.urlStart ? ` (${configStatus.urlStart}…)` : ''}; VITE_SUPABASE_ANON_KEY = ${configStatus.keyLength} caracteres (precisa de mais de 20). Na Vercel: Settings → Environment Variables e depois Redeploy. No Codespaces: arquivo .env.local e reiniciar o npm run dev.`}</Notice>
   else if (loading) content = <div className="grid place-items-center py-28" role="status" aria-label="Carregando"><Logo className="h-10 animate-pulse text-cream/80" /></div>
   else if (!event) content = <Notice title="Evento não encontrado">{`O evento Natal 2026 não foi encontrado no banco. Detalhe técnico: ${eventErr || 'sem detalhe'}`}</Notice>
   else content = (
@@ -137,13 +157,13 @@ function AppRoutes() {
       <Route path="/entrar" element={session ? <Navigate to={username ? '/' : '/bem-vindo'} replace /> : <Login />} />
       <Route path="/bem-vindo" element={!session ? <Navigate to="/entrar" replace /> : username ? <Navigate to="/" replace /> : db ? <Welcome db={db} onDone={reloadProfile} /> : <Notice title="Perfil não encontrado">{`Não consegui carregar o seu perfil. Detalhe técnico: ${profileError || 'sem detalhe'}`}</Notice>} />
       <Route path="/criar-arvore" element={!session ? <Navigate to="/entrar" replace /> : !username ? <Navigate to="/bem-vindo" replace /> : mine && !justCreated ? <Navigate to="/" replace /> : <CreateTree me={me!} confirmed={look} justCreated={justCreated} onConfirm={confirmTree} onFinish={() => { setJustCreated(false); navigate(takeNext() ?? '/') }} />} />
-      <Route path="/enfeitar" element={gate(<Decorate me={me!} eventId={event.id} onPlace={place} />)} />
+      <Route path="/enfeitar" element={gate(<Decorate me={me!} eventId={event.id} onPlace={place} onNotify={flash} />)} />
       <Route path="/memorias" element={gate(<Memories userId={db?.id ?? ''} />)} />
       <Route path="/eventos" element={gate(<Events tree={mine!} />)} />
-      <Route path="/perfil" element={gate(<ProfileScreen me={me!} tree={mine!} onShare={openShare} onSaved={reloadProfile} onLogout={signOut} />)} />
+      <Route path="/perfil" element={gate(<ProfileScreen me={me!} tree={mine!} onShare={openShare} onSaved={reloadProfile} onLogout={signOut} onNotify={flash} />)} />
       <Route path="/redefinir-senha" element={<ResetPassword hasSession={!!session} />} />
-      <Route path="/u/:username" element={<PublicTree me={me} eventId={event.id} onPlace={place} />} />
-      <Route path="/u/:username/:eventSlug" element={<PublicTree me={me} eventId={event.id} onPlace={place} />} />
+      <Route path="/u/:username" element={<PublicTree me={me} eventId={event.id} onPlace={place} onNotify={flash} />} />
+      <Route path="/u/:username/:eventSlug" element={<PublicTree me={me} eventId={event.id} onPlace={place} onNotify={flash} />} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   )

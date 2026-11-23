@@ -11,7 +11,7 @@ export type TopperKey = 'estrela' | 'laco' | 'floco' | 'anjo' | 'lua' | 'coroa'
 export type SceneKey = 'neve' | 'lareira' | 'floresta' | 'aurora' | 'praia' | 'doces'
 export type Look = { model: TreeModel; lights: LightsKey; topper: TopperKey; scene: SceneKey }
 
-export type Profile = { id?: string; username: string; name: string; hue: number; photo?: string }
+export type Profile = { id?: string; username: string; name: string; hue: number; photo?: string; music?: string }
 // `message` só existe nos dados de Memórias (já reveladas). Na árvore atual a mensagem nunca vem para o front.
 export type Side = 'frente' | 'verso'
 export type Ornament = { id: string; type: OrnamentType; side: Side; slot: number; from: string; message?: string }
