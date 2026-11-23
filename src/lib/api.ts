@@ -228,3 +228,22 @@ export async function fetchBlocked(): Promise<Profile[]> {
   if (error) throw error
   return ((data ?? []) as DbProfile[]).map(toProfile)
 }
+
+// ---------- seguindo / seguidores de um perfil ----------
+export async function fetchFollowCounts(userId: string): Promise<{ following: number; followers: number }> {
+  const [a, b] = await Promise.all([
+    supabase.from('follows').select('followee_id', { count: 'exact', head: true }).eq('follower_id', userId),
+    supabase.from('follows').select('follower_id', { count: 'exact', head: true }).eq('followee_id', userId),
+  ])
+  if (a.error) throw a.error
+  if (b.error) throw b.error
+  return { following: a.count ?? 0, followers: b.count ?? 0 }
+}
+
+export async function fetchFollowList(userId: string, kind: 'following' | 'followers'): Promise<Profile[]> {
+  const col = kind === 'following' ? 'follower_id' : 'followee_id'
+  const fk = kind === 'following' ? 'follows_followee_id_fkey' : 'follows_follower_id_fkey'
+  const { data, error } = await supabase.from('follows').select(`p:profiles!${fk}(id,username,display_name,avatar_url)`).eq(col, userId).order('created_at', { ascending: false }).limit(200)
+  if (error) throw error
+  return ((data ?? []) as unknown as { p: DbProfile | null }[]).map((r) => r.p).filter((x): x is DbProfile => !!x && !!x.username).map(toProfile)
+}

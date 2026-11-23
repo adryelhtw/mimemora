@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
 import type { Profile as P, Side, TreeData } from '../types'
 import { Avatar, Sheet } from '../components/ui'
 import { Icon } from '../components/Icons'
@@ -8,6 +9,8 @@ import { errText, fetchBlocked, saveProfile, unblockUser } from '../lib/api'
 import { AvatarPicker, resolveAvatar } from '../components/AvatarPicker'
 import type { AvatarChoice } from '../components/AvatarPicker'
 import { parseMusic } from '../lib/music'
+import { FollowStats } from '../components/FollowStats'
+import { MusicPlayer } from '../components/MusicPlayer'
 
 type Props = { me: P; tree: TreeData; onShare: () => void; onSaved: () => Promise<void>; onLogout: () => void; onNotify: (m: string) => void }
 
@@ -24,6 +27,7 @@ export function ProfileScreen({ me, tree, onShare, onSaved, onLogout, onNotify }
         <Avatar p={me} size={96} />
         <h1 className="font-display text-3xl">{me.name}</h1>
         <p className="text-gold">@{me.username}</p>
+        {me.id && <FollowStats userId={me.id} />}
         <button onClick={() => setEdit(true)} className="text-sm font-bold text-cream/70 underline">Editar perfil</button>
       </div>
       <Tree model={tree.model} lights={tree.lights} topper={tree.topper} scene={tree.scene} ornaments={tree.ornaments} animated={false} base={false} tags={false} className="mx-auto h-44" />
@@ -32,6 +36,8 @@ export function ProfileScreen({ me, tree, onShare, onSaved, onLogout, onNotify }
         <button onClick={copy} className="pill"><Icon name={copied ? 'check' : 'copy'} className="h-4 w-4" />{copied ? 'Copiado' : 'Copiar'}</button>
       </div>
       <ShareButton onClick={onShare} />
+      {me.music && <MusicPlayer url={me.music} owner={me.username} />}
+      <Link to={`/u/${me.username}`} className="inline-block text-sm font-bold text-cream/70 underline">ver meu perfil como os outros veem</Link>
       <div className="grid grid-cols-2 gap-3 text-sm">
         <div className="card p-3"><b className="block font-display text-2xl text-gold">{n('frente')}/{SIDE_CAP}</b>na frente</div>
         <div className="card p-3"><b className="block font-display text-2xl text-gold">{n('verso')}/{SIDE_CAP}</b>no verso</div>
@@ -83,7 +89,7 @@ function EditForm({ me, onSaved, onClose }: { me: P; onSaved: () => Promise<void
   const [err, setErr] = useState('')
   const save = async () => {
     if (!me.id || !name.trim()) { setErr('Escreva seu nome.'); return }
-    if (music.trim() && !parseMusic(music)) { setErr('Link de música não reconhecido. Use um link do YouTube, SoundCloud ou Spotify.'); return }
+    if (music.trim() && !parseMusic(music)) { setErr('Link de música não reconhecido. Use um link do YouTube ou do SoundCloud.'); return }
     setBusy(true); setErr('')
     try {
       let avatar_url: string | undefined
@@ -101,9 +107,9 @@ function EditForm({ me, onSaved, onClose }: { me: P; onSaved: () => Promise<void
         <input value={name} maxLength={40} onChange={(e) => setName(e.target.value)} className="mt-1 w-full rounded-xl border border-white/15 bg-black/20 px-4 py-3" />
       </label>
       <label className="block">
-        <span className="text-xs uppercase tracking-widest text-cream/60">Música da sua árvore (opcional)</span>
-        <input value={music} maxLength={300} onChange={(e) => setMusic(e.target.value)} placeholder="cole um link do YouTube, SoundCloud ou Spotify" inputMode="url" className="mt-1 w-full rounded-xl border border-white/15 bg-black/20 px-4 py-3" />
-        <span className="text-xs text-cream/50">Toca quando alguém visita a sua árvore. Deixe em branco para não ter música.</span>
+        <span className="text-xs uppercase tracking-widest text-cream/60">Música do seu perfil (opcional)</span>
+        <input value={music} maxLength={300} onChange={(e) => setMusic(e.target.value)} placeholder="cole um link do YouTube ou do SoundCloud" inputMode="url" className="mt-1 w-full rounded-xl border border-white/15 bg-black/20 px-4 py-3" />
+        <span className="text-xs text-cream/50">Fica no seu perfil em todos os eventos e toca em loop quando alguém visita a sua árvore. Deixe em branco para não ter música.</span>
       </label>
       <p className="text-xs text-cream/50">O username (@{me.username}) não muda, para que os links compartilhados continuem funcionando.</p>
       <button className="cta disabled:opacity-50" disabled={busy} onClick={save}>{busy ? 'Salvando…' : 'Salvar'}</button>

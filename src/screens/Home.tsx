@@ -33,7 +33,6 @@ export function Home({ me, tree, onShare }: Props) {
               <span className="text-sm text-cream/80">{opened ? 'Ainda há mensagens esperando por você do outro lado. ' : 'Gire a árvore para ver quem enfeitou do outro lado. '}Toque para virar →</span>
             </button>
           )}
-          {n > 0 && <p className="relative mt-2 text-center font-hand text-xl text-cream/70">toque num enfeite para ver quem enviou</p>}
         </div>
         <div className="space-y-5 text-center lg:text-left">
           <div>

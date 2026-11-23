@@ -7,6 +7,7 @@ import { Countdown } from '../events/natal-2026/Countdown'
 import { DecorateSheet } from '../components/DecorateSheet'
 import { BlockSheet } from '../components/BlockSheet'
 import { MusicPlayer } from '../components/MusicPlayer'
+import { FollowStats } from '../components/FollowStats'
 import { Avatar } from '../components/ui'
 import { errText, fetchIsFollowing, fetchPublic, setFollow } from '../lib/api'
 import type { PlaceFn } from '../lib/api'
@@ -77,6 +78,7 @@ export function PublicTree({ me, eventId, onPlace, onNotify }: Props) {
         <h1 className="font-display text-3xl">Árvore de @{owner.username}</h1>
         <p className="text-sm text-cream/70">{owner.name}</p>
         {me && !isMe && <button onClick={toggleFollow} disabled={following === null} className={`mt-1 ${following ? 'rounded-full border border-gold/60 px-4 py-1.5 text-sm font-bold text-gold' : 'pill'}`}>{following ? 'deixar de seguir' : 'seguir'}</button>}
+        {me && owner.id && <FollowStats userId={owner.id} refreshKey={following} />}
       </div>
 
       {t ? (
@@ -92,7 +94,7 @@ export function PublicTree({ me, eventId, onPlace, onNotify }: Props) {
         <p className="card p-6 text-cream/80">@{owner.username} ainda não criou a árvore de Natal.</p>
       )}
 
-      {!isMe && owner.music && <MusicPlayer url={owner.music} owner={owner.username} />}
+      {owner.music && <MusicPlayer url={owner.music} owner={owner.username} />}
 
       {me && !isMe && owner.id && (
         <>

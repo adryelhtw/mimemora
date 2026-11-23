@@ -41,8 +41,9 @@ body::before { content: ''; position: fixed; inset: 0; z-index: -1; background: 
 @keyframes ring { 70% { box-shadow: 0 0 0 16px rgba(242,196,109,0), 0 10px 30px rgba(239,155,58,.35); } 100% { box-shadow: 0 0 0 0 rgba(242,196,109,0), 0 10px 30px rgba(239,155,58,.35); } }
 @keyframes fall { to { transform: translate(30px, 105vh); } }
 @keyframes up { from { transform: translateY(24px); opacity: 0; } }
-/* "Reduzir movimento" do sistema desliga as animações da interface, exceto a neve (que tem o botão de ligar/desligar). */
-@media (prefers-reduced-motion: reduce) { *:not(.flake), *:not(.flake)::before, *:not(.flake)::after { animation: none !important; } }
+/* "Reduzir movimento" do sistema desliga os efeitos maiores da interface. Ficam de fora a neve (tem botão próprio)
+   e os detalhes sutis da árvore (balanço e brilho das luzes), para a árvore ser igual no computador e no celular. */
+@media (prefers-reduced-motion: reduce) { *:not(.flake):not(.sway):not(.twinkle):not(.pulse):not(.slot), *::before, *::after { animation: none !important; } }
 
 /* ===== Revisão visual ===== */
 .font-hand { font-family: 'Caveat', cursive; }
@@ -66,7 +67,6 @@ body::before { content: ''; position: fixed; inset: 0; z-index: -1; background: 
 .face { backface-visibility: hidden; -webkit-backface-visibility: hidden; }
 .face.verso { position: absolute; inset: 0; transform: rotateY(180deg); }
 .face[aria-hidden="true"] { pointer-events: none; }
-@media (prefers-reduced-motion: reduce) { .flip-in { transition: none; } }
 .slot { animation: slotpulse 1.8s ease-in-out infinite; }
 .nudge { animation: nudge 1.6s ease-in-out infinite; }
 @keyframes slotpulse { 50% { opacity: .45; } }
