@@ -43,7 +43,7 @@ body::before { content: ''; position: fixed; inset: 0; z-index: -1; background: 
 @keyframes up { from { transform: translateY(24px); opacity: 0; } }
 /* "Reduzir movimento" do sistema desliga os efeitos maiores da interface. Ficam de fora a neve (tem botão próprio)
    e os detalhes sutis da árvore (balanço e brilho das luzes), para a árvore ser igual no computador e no celular. */
-@media (prefers-reduced-motion: reduce) { *:not(.flake):not(.sway):not(.twinkle):not(.pulse):not(.slot), *::before, *::after { animation: none !important; } }
+@media (prefers-reduced-motion: reduce) { *:not(.flake):not(.sway):not(.twinkle):not(.pulse):not(.slot):not(.frame-ring):not(.fx-dot):not(.fx-aurora):not(.burst):not(.burst-dot):not(.letter-open), *::before, *::after { animation: none !important; } }
 
 /* ===== Revisão visual ===== */
 .font-hand { font-family: 'Caveat', cursive; }
@@ -93,3 +93,23 @@ button:not(:disabled):active, a.pill:active { transform: scale(.98); }
 .cta:not(:disabled):hover { transform: translateY(-1px); filter: brightness(1.07); }
 button.card:not(:disabled):hover { background-color: rgba(255,255,255,.12); }
 a:not(.pill):not(.cta):hover { text-decoration-color: currentColor; }
+
+/* ===== Mimos, molduras, efeitos de perfil, revelação ===== */
+.frame-ring { position: absolute; inset: 0; border-radius: 9999px; }
+.frame-dourada { background: conic-gradient(from 0deg, #f2c46d, #fff3c4, #e0a82e, #f2c46d); animation: ringspin 5s linear infinite; }
+.frame-geada { background: conic-gradient(from 0deg, #dff3ff, #8fd0f5, #ffffff, #8fd0f5, #dff3ff); box-shadow: 0 0 10px 2px rgba(180,225,255,.7); animation: ringspin 8s linear infinite; }
+.frame-coracoes { background: conic-gradient(from 0deg, #ff9fb8, #ffd9e3, #ff6f95, #ff9fb8); box-shadow: 0 0 10px 2px rgba(255,159,184,.6); animation: ringspin 6s linear infinite; }
+@keyframes ringspin { to { transform: rotate(360deg); } }
+.fx-dot { position: absolute; top: 100%; border-radius: 50%; animation: fxrise linear infinite; }
+@keyframes fxrise { to { transform: translateY(-330px); opacity: 0; } }
+.fx-aurora { position: absolute; inset: 0; background: linear-gradient(115deg, rgba(93,242,192,0), rgba(93,242,192,.35), rgba(123,108,255,.35), rgba(255,122,217,.25), rgba(255,122,217,0)); background-size: 200% 100%; animation: fxshift 9s ease-in-out infinite alternate; }
+@keyframes fxshift { to { background-position: 100% 0; } }
+.burst { animation: burstIn .45s cubic-bezier(.2,1.4,.4,1) both, burstOut .5s ease-in forwards; }
+@keyframes burstIn { from { transform: translateY(-14px) scale(.7); opacity: 0; } }
+@keyframes burstOut { to { transform: translateY(-18px); opacity: 0; } }
+.burst-rare { box-shadow: 0 0 40px 8px rgba(242,196,109,.55); }
+.burst-dot { position: absolute; left: 50%; top: 50%; width: 7px; height: 7px; margin: -3px; border-radius: 50%; background: var(--c); animation: burstDot 1.2s ease-out forwards; }
+@keyframes burstDot { from { transform: rotate(var(--a)) translateX(10px); } to { transform: rotate(var(--a)) translateX(110px); opacity: 0; } }
+.letter-open { animation: letterIn .55s cubic-bezier(.2,1.2,.4,1) both; }
+@keyframes letterIn { from { transform: rotateX(70deg) scale(.9); opacity: 0; } }
+.wheel { transition: transform 4.2s cubic-bezier(.12,.72,.1,1); }

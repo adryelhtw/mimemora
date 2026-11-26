@@ -5,7 +5,7 @@ import type { Profile } from '../types'
 import { Icon } from './Icons'
 import { PresetAvatar, presetOf } from './avatars'
 
-export function Avatar({ p, size = 44 }: { p: Profile; size?: number }) {
+function AvatarBase({ p, size = 44 }: { p: Profile; size?: number }) {
   const preset = presetOf(p.photo)
   if (preset) return <PresetAvatar preset={preset} size={size} />
   if (p.photo) return <img src={p.photo} alt={p.name} style={{ width: size, height: size }} className="shrink-0 rounded-full object-cover ring-2 ring-gold/60" />
@@ -89,5 +89,17 @@ export function Toast({ msg }: { msg: string }) {
     <div role="status" className="sheet fixed bottom-24 left-1/2 z-[60] w-[calc(100%-2rem)] max-w-sm -translate-x-1/2 rounded-2xl border border-gold/40 bg-night-2 px-4 py-3 text-center text-sm font-bold shadow-xl">
       {msg}
     </div>
+  )
+}
+
+// Foto de perfil, com a moldura equipada (se houver).
+export function Avatar({ p, size = 44 }: { p: Profile; size?: number }) {
+  if (!p.frame) return <AvatarBase p={p} size={size} />
+  const pad = Math.max(3, Math.round(size * 0.07))
+  return (
+    <span className="relative inline-grid shrink-0 place-items-center" style={{ width: size + pad * 2, height: size + pad * 2 }}>
+      <span className={`frame-ring frame-${p.frame}`} aria-hidden="true" />
+      <span className="relative"><AvatarBase p={p} size={size} /></span>
+    </span>
   )
 }

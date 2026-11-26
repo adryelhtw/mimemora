@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
-import type { Profile, Side, TreeData } from '../types'
+import type { Gift, Profile, Side, TreeData } from '../types'
 import { SIDE_CAP } from '../events/natal-2026/Tree'
 import { SideSwitch, TreeFlip } from '../events/natal-2026/TreeFlip'
 import { Countdown } from '../events/natal-2026/Countdown'
@@ -8,6 +8,9 @@ import { DecorateSheet } from '../components/DecorateSheet'
 import { BlockSheet } from '../components/BlockSheet'
 import { MusicPlayer } from '../components/MusicPlayer'
 import { FollowStats } from '../components/FollowStats'
+import { ProfileFx } from '../components/ProfileFx'
+import { AchievementsStrip } from '../components/AchievementsStrip'
+import { GiftInfoSheet, SendGiftPanel } from '../components/GiftSheets'
 import { Avatar } from '../components/ui'
 import { errText, fetchIsFollowing, fetchPublic, setFollow } from '../lib/api'
 import type { PlaceFn } from '../lib/api'
@@ -25,6 +28,7 @@ export function PublicTree({ me, eventId, onPlace, onNotify }: Props) {
   const [side, setSide] = useState<Side>('frente')
   const [following, setFollowing] = useState<boolean | null>(null)
   const [blockOpen, setBlockOpen] = useState(false)
+  const [giftInfo, setGiftInfo] = useState<Gift | null>(null)
 
   const load = useCallback(async () => {
     try {
@@ -50,6 +54,12 @@ export function PublicTree({ me, eventId, onPlace, onNotify }: Props) {
     return () => { alive = false }
   }, [me?.id, owner?.id, isMe])
 
+  // Indicação: quem chega por uma árvore e se cadastra depois conta como convidado de quem a compartilhou.
+  useEffect(() => {
+    if (me || !owner?.username) return
+    try { if (!localStorage.getItem('ref')) localStorage.setItem('ref', owner.username) } catch { /* ok */ }
+  }, [me, owner?.username])
+
   if (st.s === 'loading') return <p className="py-20 text-center text-cream/70">Carregando a árvore…</p>
   if (st.s === 'notfound' || !owner) return <p className="py-20 text-center text-cream/70">Não encontramos esse usuário. <Link to="/" className="text-gold">Voltar</Link></p>
 
@@ -71,7 +81,8 @@ export function PublicTree({ me, eventId, onPlace, onNotify }: Props) {
   }
 
   return (
-    <section className="mx-auto max-w-md space-y-5 text-center">
+    <section className="relative isolate mx-auto max-w-md space-y-5 text-center">
+      <ProfileFx kind={owner.effect} />
       <div className="flex flex-col items-center gap-1">
         <Avatar p={owner} size={56} />
         <p className="font-display text-sm uppercase tracking-[.3em] text-gold">Natal 2026</p>
@@ -79,15 +90,18 @@ export function PublicTree({ me, eventId, onPlace, onNotify }: Props) {
         <p className="text-sm text-cream/70">{owner.name}</p>
         {me && !isMe && <button onClick={toggleFollow} disabled={following === null} className={`mt-1 ${following ? 'rounded-full border border-gold/60 px-4 py-1.5 text-sm font-bold text-gold' : 'pill'}`}>{following ? 'deixar de seguir' : 'seguir'}</button>}
         {me && owner.id && <FollowStats userId={owner.id} refreshKey={following} />}
+        {owner.id && <AchievementsStrip userId={owner.id} />}
       </div>
 
       {t ? (
         <>
-          <div className="relative"><div className="glow" /><TreeFlip side={side} model={t.model} lights={t.lights} topper={t.topper} scene={t.scene} backdrop ornaments={t.ornaments} className="relative mx-auto w-full max-w-[380px]" /></div>
+          <div className="relative"><div className="glow" /><TreeFlip side={side} model={t.model} lights={t.lights} topper={t.topper} scene={t.scene} backdrop ornaments={t.ornaments} gifts={t.gifts} onGift={setGiftInfo} className="relative mx-auto w-full max-w-[380px]" /></div>
           <SideSwitch side={side} onSide={setSide} counts={counts} />
           <Countdown compact />
           {!isMe && !me && <button className="cta" onClick={() => navigate(`/entrar?next=${encodeURIComponent(pathname)}`)}>Entrar para deixar um enfeite</button>}
           {!isMe && me && <button className="cta disabled:opacity-60" disabled={done || full} onClick={() => setOpen(true)}>{done ? 'Já enfeitou' : full ? 'Esta árvore já está cheia' : 'Deixar um enfeite'}</button>}
+          {me && !isMe && <SendGiftPanel me={me} tree={t} onSent={load} onNotify={onNotify} />}
+          <GiftInfoSheet gift={giftInfo} onClose={() => setGiftInfo(null)} />
           {me && <DecorateSheet target={open ? t : null} me={me} onClose={() => setOpen(false)} onPlace={place} />}
         </>
       ) : (

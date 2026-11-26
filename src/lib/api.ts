@@ -1,10 +1,11 @@
 import { supabase } from './supabase'
+import { fetchCosmetics, fetchGifts } from './mimos'
 import type { Look, Memory, Ornament, OrnamentType, Profile, Side, TreeData } from '../types'
 
 export const EVENT_SLUG = 'natal-2026'
 
 export type DbProfile = { id: string; username: string | null; display_name: string | null; avatar_url: string | null; music_url?: string | null; card_url?: string | null }
-export type EventRow = { id: string; slug: string; name: string; starts_at: string; opens_at: string; ends_at: string }
+export type EventRow = { id: string; slug: string; name: string; starts_at: string; opens_at: string; ends_at: string; expectation_at: string | null }
 export type TreeCard = { id: string; owner: Profile; look: Look; count: number }
 export type PlaceFn = (participationId: string, type: OrnamentType, message: string, side: Side, slot: number) => Promise<string | null>
 
@@ -19,6 +20,17 @@ const MESSAGES: Record<string, string> = {
   tree_not_found: 'Essa árvore não existe mais.',
   blocked: 'Você não pode interagir com esse usuário.',
   user_not_found: 'Esse usuário não existe mais.',
+  insufficient_funds: 'Você não tem mimos suficientes.',
+  already_owned: 'Você já tem esse item.',
+  not_available: 'Esse item não está disponível agora.',
+  not_for_sale: 'Esse item não é vendido na loja.',
+  item_not_found: 'Esse item não existe mais.',
+  already_spun: 'Você já girou a roleta hoje. Volte amanhã!',
+  already_sent: 'Você já enviou esse presente para essa árvore.',
+  already_opened: 'Esse presente já foi aberto.',
+  not_open_yet: 'Ainda não é hora de abrir. Aguarde a revelação.',
+  not_owned: 'Você não tem esse item.',
+  roulette_unavailable: 'A roleta está descansando. Volte mais tarde.',
 }
 export const errText = (e: unknown): string => {
   const x = e as { message?: string; code?: string } | null
@@ -30,7 +42,7 @@ const hueOf = (s: string) => [...s].reduce((h, c) => (h * 31 + c.charCodeAt(0)) 
 export const toProfile = (r: DbProfile): Profile => ({ id: r.id, username: r.username ?? '', name: r.display_name || r.username || 'Amigo', hue: hueOf(r.username ?? ''), photo: r.avatar_url ?? undefined, music: r.music_url ?? undefined })
 
 export async function fetchEvent(): Promise<EventRow | null> {
-  const { data, error } = await supabase.from('events').select('id,slug,name,starts_at,opens_at,ends_at').eq('slug', EVENT_SLUG).maybeSingle()
+  const { data, error } = await supabase.from('events').select('id,slug,name,starts_at,opens_at,ends_at,expectation_at').eq('slug', EVENT_SLUG).maybeSingle()
   if (error) throw error
   return data
 }
@@ -104,14 +116,18 @@ export async function fetchPublic(username: string, eventId: string): Promise<{ 
   if (error) throw error
   if (!p) return null
   const owner = toProfile(p as DbProfile)
+  const cos = await fetchCosmetics(p.id).catch(() => ({ frame: null, effect: null }))
+  owner.frame = cos.frame ?? undefined
+  owner.effect = cos.effect ?? undefined
   const { data: part, error: e2 } = await supabase.from('participations').select('id,config').eq('user_id', p.id).eq('event_id', eventId).maybeSingle()
   if (e2) throw e2
   if (!part) return { owner, tree: null }
   const { data: cs, error: e3 } = await supabase.from('contributions').select('id,item_type,side,slot,sender:profiles!contributions_sender_id_fkey(username)').eq('participation_id', part.id)
   if (e3) throw e3
   const cfg = part.config as Look
+  const gifts = await fetchGifts(part.id).catch(() => [])
   const ornaments: Ornament[] = ((cs ?? []) as unknown as CRow[]).map((c) => ({ id: c.id, type: c.item_type as OrnamentType, side: c.side as Side, slot: c.slot, from: c.sender?.username ?? '' }))   // '' = remetente oculto (bloqueio)
-  return { owner, tree: { id: part.id, owner, model: cfg.model, lights: cfg.lights, topper: cfg.topper, scene: cfg.scene, ornaments } }
+  return { owner, tree: { id: part.id, owner, model: cfg.model, lights: cfg.lights, topper: cfg.topper, scene: cfg.scene, ornaments, gifts } }
 }
 
 export async function searchTrees(q: string, eventId: string): Promise<TreeCard[]> {

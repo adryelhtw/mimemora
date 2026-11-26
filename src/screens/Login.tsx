@@ -29,6 +29,8 @@ export function Login() {
   useEffect(() => {
     const next = params.get('next')
     if (next && next.startsWith('/')) { try { localStorage.setItem(NEXT_KEY, next) } catch { /* ok */ } }
+    const ref = params.get('ref')   // link de indicação: /entrar?ref=usuario
+    if (ref && /^[a-z0-9_]{3,20}$/i.test(ref)) { try { localStorage.setItem('ref', ref.toLowerCase()) } catch { /* ok */ } }
   }, [params])
 
   const go = (m: Mode) => { setMode(m); setErr(''); setInfo('') }

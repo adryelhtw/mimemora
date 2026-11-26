@@ -1,8 +1,9 @@
 import { useId } from 'react'
 import type { SVGProps } from 'react'
-import type { LightsKey, Ornament, SceneKey, Side, TopperKey, TreeModel } from '../../types'
+import type { Gift, LightsKey, Ornament, SceneKey, Side, TopperKey, TreeModel } from '../../types'
 import { OrnamentArt, starPath } from './ornaments'
 import { Gifts, SceneBackdrop, SceneGround } from './scenes'
+import { nowMs } from '../../lib/clock'
 
 type Pal = { name: string; g: [string, string, string]; edge: 'scallop' | 'spike' | 'straight'; snow?: boolean; trim?: string; lights: string[]; glow: string }
 
@@ -90,6 +91,9 @@ export const SLOTS: [number, number][] = [
 // 12 posições por lado (24 por árvore). Fileiras a 56 unidades; lado a lado, 62 a 76. Cada slot ocupa de y-33 (topo da etiqueta) a y+21 (base do enfeite), então nada se sobrepõe.
 export const SIDE_CAP = SLOTS.length
 
+const AURA_SPARKS: [number, number, number][] = [[24, 60, 1], [276, 90, 0.9], [18, 200, 1], [282, 230, 0.8], [40, 330, 0.9], [262, 340, 1], [150, 14, 1.1], [96, 30, 0.8], [210, 40, 0.9]]
+const BOX_X = [150, 112, 188, 74, 226]
+const BOX_COLORS = ['#c9172f', '#2f6fb5', '#1f8a5b', '#8b5fd6', '#e0a82e']
 const SPARKLES: [number, number, number][] = [[44, 112, 1], [258, 160, 0.8], [38, 262, 0.9], [264, 304, 0.7]]
 
 const tierPath = (t: number, b: number, w: number, edge: Pal['edge']) => {
@@ -121,12 +125,15 @@ const swag = (t: number, b: number, w: number) => {
   return { y0, hw, pts: [0.08, 0.28, 0.5, 0.72, 0.92].map((k) => ({ x: 150 - hw + 2 * hw * k, y: y0 + 52 * (1 - k) * k })) }
 }
 
-type Props = { model: TreeModel; ornaments?: Ornament[]; onPick?: (o: Ornament) => void; animated?: boolean; base?: boolean; sealed?: boolean; lights?: LightsKey; topper?: TopperKey; side?: Side; scene?: SceneKey; backdrop?: boolean; tags?: boolean; slots?: { free: number[]; onPick: (n: number) => void } } & SVGProps<SVGSVGElement>
+type Props = { model: TreeModel; ornaments?: Ornament[]; onPick?: (o: Ornament) => void; animated?: boolean; base?: boolean; sealed?: boolean; lights?: LightsKey; topper?: TopperKey; side?: Side; scene?: SceneKey; backdrop?: boolean; tags?: boolean; gifts?: Gift[]; onGift?: (g: Gift) => void; slots?: { free: number[]; onPick: (n: number) => void } } & SVGProps<SVGSVGElement>
 
-export function Tree({ model, ornaments = [], onPick, animated = true, base = true, sealed = true, lights, topper = 'estrela', side = 'frente', scene = 'neve', backdrop = false, tags = true, slots, ...svg }: Props) {
+export function Tree({ model, ornaments = [], onPick, animated = true, base = true, sealed = true, lights, topper = 'estrela', side = 'frente', scene = 'neve', backdrop = false, tags = true, slots, gifts, onGift, ...svg }: Props) {
   const id = useId().replace(/[^a-zA-Z0-9_-]/g, ''), p = MODELS[model], u = (s: string) => `url(#${id}${s})`
   const tw = animated ? 'twinkle' : undefined
   const lc = lights ? LIGHTS[lights].colors : p.lights
+  const now = nowMs()
+  const glows = (gifts ?? []).filter((g) => g.kind === 'brilho' && (!g.expiresAt || new Date(g.expiresAt).getTime() > now))   // Brilho Mágico ativo
+  const boxes = (gifts ?? []).filter((g) => g.kind === 'misterioso').slice(0, 5)                                                // Presentes Misteriosos
   const sw = TIERS.map((r) => swag(r.t, r.b, r.w))
   const bulbs = sw.flatMap((s, ti) => s.pts.map((b, i) => ({ ...b, k: `${ti}-${i}`, c: lc[(i + ti) % lc.length], d: { animationDelay: `${-((i * 3 + ti) % 5) * 0.55}s` } })))
   return (
@@ -137,10 +144,19 @@ export function Tree({ model, ornaments = [], onPick, animated = true, base = tr
         <linearGradient id={id + 't'} x1="0" x2="1"><stop offset="0" stopColor="#7a4a2a" /><stop offset="1" stopColor="#3f2414" /></linearGradient>
         <radialGradient id={id + 's'}><stop offset="0" stopColor="#fff8d6" /><stop offset="1" stopColor="#f4b93a" /></radialGradient>
         <radialGradient id={id + 'o'}><stop offset="0" stopColor={p.glow} stopOpacity=".85" /><stop offset="1" stopColor={p.glow} stopOpacity="0" /></radialGradient>
+        <radialGradient id={id + 'au'}><stop offset="0" stopColor="#fff3b0" stopOpacity=".5" /><stop offset=".6" stopColor="#f2c46d" stopOpacity=".18" /><stop offset="1" stopColor="#f2c46d" stopOpacity="0" /></radialGradient>
         <radialGradient id={id + 'og'}><stop offset="0" stopColor="#fff" stopOpacity=".4" /><stop offset="1" stopColor="#fff" stopOpacity="0" /></radialGradient>
       </defs>
       {backdrop && <SceneBackdrop scene={scene} id={id} />}
       <SceneGround scene={scene} />
+      {glows.length > 0 && (
+        <g pointerEvents="none">
+          <ellipse cx="150" cy="205" rx="152" ry="198" fill={u('au')} className={animated ? 'pulse' : undefined} />
+          {AURA_SPARKS.map(([x, y, k], i) => (
+            <path key={i} d="M0-7 1.8-1.8 7 0 1.8 1.8 0 7-1.8 1.8-7 0-1.8-1.8Z" transform={`translate(${x} ${y}) scale(${k})`} fill="#fff3b0" className={tw} style={{ animationDelay: `${-i * 0.5}s` }} />
+          ))}
+        </g>
+      )}
       <rect x="134" y="334" width="32" height="38" rx="3" fill={u('t')} />
       {[...TIERS].reverse().map((r) => {
         const d = tierPath(r.t, r.b, r.w, p.edge), br = branches(r.t, r.b, r.w)
@@ -172,6 +188,26 @@ export function Tree({ model, ornaments = [], onPick, animated = true, base = tr
         <path key={i} d="M0-7 1.8-1.8 7 0 1.8 1.8 0 7-1.8 1.8-7 0-1.8-1.8Z" transform={`translate(${x} ${y}) scale(${k})`} fill="#fff8d6" className="twinkle" style={{ animationDelay: `${-i * 0.9}s` }} />
       ))}
       {base && <Gifts scene={scene} />}
+      {side === 'frente' && boxes.map((g, i) => {
+        const act = onGift ? () => onGift(g) : undefined
+        return (
+          <g key={g.id} transform={`translate(${BOX_X[i] - 15} 364)`} style={{ cursor: act ? 'pointer' : undefined }} role={act ? 'button' : undefined} tabIndex={act ? 0 : undefined}
+            aria-label={`Presente misterioso de ${g.from ? '@' + g.from : 'alguém'}`} onClick={act} onKeyDown={act ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); act() } } : undefined}>
+            <rect width="30" height="24" rx="2" fill={BOX_COLORS[i % BOX_COLORS.length]} stroke="#fff" strokeOpacity=".35" />
+            <rect x="12" width="6" height="24" fill="#f2c46d" /><rect y="9" width="30" height="5" fill="#f2c46d" opacity=".9" />
+            <path d="M15 0c-7-8-13-1-6 0zM15 0c7-8 13-1 6 0z" fill="none" stroke="#f2c46d" strokeWidth="2" />
+          </g>
+        )
+      })}
+      {tags && glows.slice(0, 3).map((g, i) => {
+        const label = `✦ ${g.from ? '@' + g.from : 'oculto'}`, w = label.length * 4.8 + 10
+        return (
+          <g key={g.id} transform={`translate(${296 - w} ${22 + i * 18})`} style={{ cursor: onGift ? 'pointer' : undefined }} onClick={onGift ? () => onGift(g) : undefined}>
+            <rect width={w} height="14" rx="7" fill="#0a1a33" fillOpacity=".9" stroke="#f2c46d" strokeOpacity=".7" strokeWidth=".8" />
+            <text x={w / 2} y="10" textAnchor="middle" fontSize="8" fontWeight="700" fill="#fff3b0" fontFamily="Nunito, system-ui, sans-serif">{label}</text>
+          </g>
+        )
+      })}
       {slots?.free.map((n) => {
         const [x, y] = SLOTS[n], pickSlot = () => slots.onPick(n)
         return (

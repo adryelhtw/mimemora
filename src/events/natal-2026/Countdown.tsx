@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react'
 import { getEvent } from '../registry'
+import { nowMs } from '../../lib/clock'
 
 const target = new Date(getEvent('natal-2026')!.opensAt).getTime()
 
 // PROTÓTIPO: usa o relógio do aparelho. Na versão real, o horário vem do servidor.
 const left = () => {
-  const ms = Math.max(0, target - Date.now()), s = Math.floor(ms / 1000)
+  const ms = Math.max(0, target - nowMs()), s = Math.floor(ms / 1000)
   return { done: ms === 0, d: Math.floor(s / 86400), h: Math.floor((s % 86400) / 3600), m: Math.floor((s % 3600) / 60), s: s % 60 }
 }
 

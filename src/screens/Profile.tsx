@@ -11,6 +11,9 @@ import type { AvatarChoice } from '../components/AvatarPicker'
 import { parseMusic } from '../lib/music'
 import { FollowStats } from '../components/FollowStats'
 import { MusicPlayer } from '../components/MusicPlayer'
+import { ProfileFx } from '../components/ProfileFx'
+import { AchievementsStrip } from '../components/AchievementsStrip'
+import { fetchCosmetics } from '../lib/mimos'
 
 type Props = { me: P; tree: TreeData; onShare: () => void; onSaved: () => Promise<void>; onLogout: () => void; onNotify: (m: string) => void }
 
@@ -18,16 +21,20 @@ export function ProfileScreen({ me, tree, onShare, onSaved, onLogout, onNotify }
   const [copied, setCopied] = useState(false)
   const [edit, setEdit] = useState(false)
   const [blocked, setBlocked] = useState(false)
+  const [cos, setCos] = useState<{ frame: string | null; effect: string | null }>({ frame: null, effect: null })
+  useEffect(() => { if (me.id) fetchCosmetics(me.id).then(setCos).catch(() => undefined) }, [me.id])
   const link = `${window.location.origin}/u/${me.username}`
   const copy = async () => { try { await navigator.clipboard.writeText(link); setCopied(true); setTimeout(() => setCopied(false), 2500) } catch { /* sem permissão */ } }
   const n = (s: Side) => tree.ornaments.filter((o) => o.side === s).length
   return (
-    <section className="mx-auto max-w-md space-y-5 text-center">
+    <section className="relative isolate mx-auto max-w-md space-y-5 text-center">
+      <ProfileFx kind={cos.effect ?? undefined} />
       <div className="flex flex-col items-center gap-2">
-        <Avatar p={me} size={96} />
+        <Avatar p={{ ...me, frame: cos.frame ?? undefined }} size={96} />
         <h1 className="font-display text-3xl">{me.name}</h1>
         <p className="text-gold">@{me.username}</p>
         {me.id && <FollowStats userId={me.id} />}
+        {me.id && <AchievementsStrip userId={me.id} own />}
         <button onClick={() => setEdit(true)} className="text-sm font-bold text-cream/70 underline">Editar perfil</button>
       </div>
       <Tree model={tree.model} lights={tree.lights} topper={tree.topper} scene={tree.scene} ornaments={tree.ornaments} animated={false} base={false} tags={false} className="mx-auto h-44" />
@@ -37,7 +44,11 @@ export function ProfileScreen({ me, tree, onShare, onSaved, onLogout, onNotify }
       </div>
       <ShareButton onClick={onShare} />
       {me.music && <MusicPlayer url={me.music} owner={me.username} />}
-      <Link to={`/u/${me.username}`} className="inline-block text-sm font-bold text-cream/70 underline">ver meu perfil como os outros veem</Link>
+      <div className="flex flex-wrap justify-center gap-2">
+        <Link to="/loja" className="pill">loja e mimos</Link>
+        <Link to="/conquistas" className="pill">conquistas</Link>
+        <Link to={`/u/${me.username}`} className="pill">ver como os outros veem</Link>
+      </div>
       <div className="grid grid-cols-2 gap-3 text-sm">
         <div className="card p-3"><b className="block font-display text-2xl text-gold">{n('frente')}/{SIDE_CAP}</b>na frente</div>
         <div className="card p-3"><b className="block font-display text-2xl text-gold">{n('verso')}/{SIDE_CAP}</b>no verso</div>

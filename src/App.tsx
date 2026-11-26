@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import type { ReactElement } from 'react'
+import type { ReactElement, ReactNode } from 'react'
 import { BrowserRouter, Link, Navigate, NavLink, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
 import { CONTACT_EMAIL } from './config/app'
 import type { Look, TreeData } from './types'
@@ -15,6 +15,12 @@ import type { IconName } from './components/Icons'
 import { ErrorBanner, ErrorBoundary } from './components/ErrorBoundary'
 import { Logo } from './components/Logo'
 import { ShareSheet } from './components/ShareSheet'
+import { MimosProvider, useMimos } from './lib/mimosContext'
+import { syncClock } from './lib/clock'
+import { claimReferral } from './lib/mimos'
+import { Shop } from './screens/Shop'
+import { Achievements } from './screens/Achievements'
+import { Reveal } from './screens/Reveal'
 import { Home } from './screens/Home'
 import { Login, NEXT_KEY } from './screens/Login'
 import { Welcome } from './screens/Welcome'
@@ -49,6 +55,7 @@ function AppRoutes() {
   const { pathname } = useLocation()
   const navigate = useNavigate()
   const { ready, session, profile: db, profileError, reloadProfile, signOut } = useAuth()
+  const { balance, refresh: refreshMimos } = useMimos()
   const [event, setEvent] = useState<EventRow | null | undefined>(undefined) // undefined = carregando
   const [eventErr, setEventErr] = useState('')
   const [mineBox, setMineBox] = useState<{ user: string; tree: TreeData | null } | null>(null)
@@ -96,6 +103,18 @@ function AppRoutes() {
     return () => document.removeEventListener('visibilitychange', f)
   }, [loadMine])
 
+  useEffect(() => { syncClock() }, [])
+  // Indicação: o link /entrar?ref=usuario (ou a visita a uma árvore) guarda o código; vale ao escolher o username, antes de criar a árvore.
+  useEffect(() => {
+    if (!session || !username) return
+    try {
+      const ref = localStorage.getItem('ref')
+      if (!ref) return
+      localStorage.removeItem('ref')
+      claimReferral(ref).catch(() => undefined)
+    } catch { /* ok */ }
+  }, [session, username])
+
   // Mantém a imagem de compartilhamento (prévia do link) atualizada com a árvore e os enfeites recebidos.
   useEffect(() => {
     if (!db?.id || !username || !mine) return
@@ -127,23 +146,25 @@ function AppRoutes() {
     if (!db?.username || !event) return 'Não foi possível criar a árvore agora.'
     try { await createTree(db.id, event.id, l) } catch (e) {
       const code = (e as { code?: string } | null)?.code
-      return isUnique(e) ? 'Você já criou a árvore deste Natal.' : code === '42501' ? 'O período para criar árvores terminou.' : 'Não consegui criar a árvore agora. Tente de novo.'
+      return isUnique(e) ? 'Você já criou a árvore deste Natal.' : code === '42501' ? 'Não foi possível criar: confira se o período está aberto e se todos os itens escolhidos são seus (itens com cadeado são comprados na loja).' : 'Não consegui criar a árvore agora. Tente de novo.'
     }
     clearDraft(db.id)
     try { setMine(await loadMine()) } catch { setMine(null) }
+    refreshMimos()
     setJustCreated(true)
     return null
   }
 
   const place: PlaceFn = async (...args) => {
     const e = await placeOrnament(...args)
-    if (!e) flash('Enfeite pendurado! A mensagem fica secreta até 25/12 🎄')
+    if (!e) { flash('Enfeite pendurado! A mensagem fica secreta até 25/12 🎄'); refreshMimos() }
     return e
   }
 
   const bare = ['/entrar', '/bem-vindo', '/criar-arvore', '/redefinir-senha'].includes(pathname)
   const loading = !ready || event === undefined || (!!username && mine === undefined)
   const openShare = () => setShare(true)
+  const gateUser = (el: ReactElement) => (!session ? <Navigate to="/entrar" replace /> : !username ? <Navigate to="/bem-vindo" replace /> : el)
   const gate = (el: ReactElement) => (!session ? <Navigate to="/entrar" replace /> : !username ? <Navigate to="/bem-vindo" replace /> : !mine ? <Navigate to="/criar-arvore" replace /> : el)
   const look: Look | null = mine?.lights && mine.topper && mine.scene ? { model: mine.model, lights: mine.lights, topper: mine.topper, scene: mine.scene } : null
 
@@ -153,7 +174,7 @@ function AppRoutes() {
   else if (!event) content = <Notice title="Evento não encontrado">{`O evento Natal 2026 não foi encontrado no banco. Detalhe técnico: ${eventErr || 'sem detalhe'}`}</Notice>
   else content = (
     <Routes>
-      <Route path="/" element={gate(<Home me={me!} tree={mine!} onShare={openShare} />)} />
+      <Route path="/" element={gate(<Home me={me!} tree={mine!} event={event} onShare={openShare} />)} />
       <Route path="/entrar" element={session ? <Navigate to={username ? '/' : '/bem-vindo'} replace /> : <Login />} />
       <Route path="/bem-vindo" element={!session ? <Navigate to="/entrar" replace /> : username ? <Navigate to="/" replace /> : db ? <Welcome db={db} onDone={reloadProfile} /> : <Notice title="Perfil não encontrado">{`Não consegui carregar o seu perfil. Detalhe técnico: ${profileError || 'sem detalhe'}`}</Notice>} />
       <Route path="/criar-arvore" element={!session ? <Navigate to="/entrar" replace /> : !username ? <Navigate to="/bem-vindo" replace /> : mine && !justCreated ? <Navigate to="/" replace /> : <CreateTree me={me!} confirmed={look} justCreated={justCreated} onConfirm={confirmTree} onFinish={() => { setJustCreated(false); navigate(takeNext() ?? '/') }} />} />
@@ -161,6 +182,9 @@ function AppRoutes() {
       <Route path="/memorias" element={gate(<Memories userId={db?.id ?? ''} />)} />
       <Route path="/eventos" element={gate(<Events tree={mine!} />)} />
       <Route path="/perfil" element={gate(<ProfileScreen me={me!} tree={mine!} onShare={openShare} onSaved={reloadProfile} onLogout={signOut} onNotify={flash} />)} />
+      <Route path="/loja" element={gateUser(<Shop me={me!} onNotify={flash} />)} />
+      <Route path="/conquistas" element={gateUser(<Achievements />)} />
+      <Route path="/revelacao" element={gate(<Reveal tree={mine!} event={event} onNotify={flash} />)} />
       <Route path="/redefinir-senha" element={<ResetPassword hasSession={!!session} />} />
       <Route path="/u/:username" element={<PublicTree me={me} eventId={event.id} onPlace={place} onNotify={flash} />} />
       <Route path="/u/:username/:eventSlug" element={<PublicTree me={me} eventId={event.id} onPlace={place} onNotify={flash} />} />
@@ -179,6 +203,7 @@ function AppRoutes() {
           <Link to="/" aria-label="mimemora, página inicial" className="text-cream"><Logo className="h-7" /></Link>
           <div className="flex items-center gap-3">
             {!session && <Link to="/entrar" className="pill">Entrar</Link>}
+            {me && <Link to="/loja" aria-label="Seus mimos e a loja" className="rounded-full border border-gold/40 bg-white/5 px-3 py-1 text-sm font-bold text-gold hover:bg-white/10">✦ {balance ?? '…'}</Link>}
             {me && mine && <button className="pill" onClick={openShare}><Icon name="share" className="h-4 w-4" />Compartilhar</button>}
             {me && <Link to="/perfil" aria-label="Meu perfil"><Avatar p={me} size={36} /></Link>}
           </div>
@@ -205,12 +230,18 @@ function AppRoutes() {
   )
 }
 
+// Saldo de mimos e avisos de recompensa para todas as telas.
+function MimosGate({ children }: { children: ReactNode }) {
+  const { profile } = useAuth()
+  return <MimosProvider userId={profile?.id ?? null}>{children}</MimosProvider>
+}
+
 export default function App() {
   return (
     <ErrorBoundary>
       <AuthProvider>
         <BrowserRouter>
-          <AppRoutes />
+          <MimosGate><AppRoutes /></MimosGate>
         </BrowserRouter>
       </AuthProvider>
     </ErrorBoundary>

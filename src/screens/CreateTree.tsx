@@ -5,6 +5,9 @@ import { SCENES } from '../events/natal-2026/scenes'
 import type { LightsKey, Look, Profile, SceneKey, TopperKey, TreeModel } from '../types'
 import { DEFAULT_LOOK, loadDraft, saveDraft } from '../lib/treeStore'
 import { Sheet } from '../components/ui'
+import { Link } from 'react-router-dom'
+import { fetchCatalog, fetchInventory } from '../lib/mimos'
+import type { CatalogItem } from '../lib/mimos'
 
 type Props = { me: Profile; confirmed: Look | null; justCreated: boolean; onConfirm: (l: Look) => Promise<string | null>; onFinish: () => void }
 
@@ -21,6 +24,19 @@ export function CreateTree({ me, confirmed, justCreated, onConfirm, onFinish }: 
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState('')
   useEffect(() => { if (!confirmed) saveDraft(key, look) }, [look, confirmed, key])
+  const [catalog, setCatalog] = useState<CatalogItem[]>([])
+  const [owned, setOwned] = useState<Set<string>>(new Set())
+  useEffect(() => {
+    fetchCatalog().then(setCatalog).catch(() => undefined)
+    if (me.id) fetchInventory(me.id).then((r) => setOwned(new Set(r.map((o) => o.item_id)))).catch(() => undefined)
+  }, [me.id])
+  // Itens especiais precisam ser comprados na loja (o banco também confere isso ao criar a árvore).
+  const priceOf = (kind: string, k: string) => { const it = catalog.find((c) => c.kind === kind && c.key === k); return it && it.tier !== 'inicial' && !owned.has(it.id) ? Math.max(it.price, 1) : 0 }
+  const lockBadge = (kind: string, k: string) => (priceOf(kind, k) > 0 ? <span className="block text-[10px] text-gold">🔒 {priceOf(kind, k)} mimos</span> : null)
+  useEffect(() => {
+    setLook((l) => ({ model: priceOf('model', l.model) ? DEFAULT_LOOK.model : l.model, lights: priceOf('lights', l.lights) ? DEFAULT_LOOK.lights : l.lights, topper: priceOf('topper', l.topper) ? DEFAULT_LOOK.topper : l.topper, scene: priceOf('scene', l.scene) ? DEFAULT_LOOK.scene : l.scene }))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [catalog, owned])
   const confirm = async () => {
     setBusy(true); setErr('')
     const e = await onConfirm(look)
@@ -38,6 +54,7 @@ export function CreateTree({ me, confirmed, justCreated, onConfirm, onFinish }: 
         <p className="font-hand text-3xl text-gold">Pronto, @{me.username}!</p>
         <h1 className="font-display text-3xl leading-tight">Sua árvore de Natal 2026 foi criada</h1>
         <p className="text-cream/80">Ela é a sua árvore oficial neste Natal e não poderá ser alterada. Agora é só chamar os amigos para enfeitar.</p>
+        <p className="text-sm text-cream/70">Convide amigos e ganhe mimos quando eles criarem a árvore: <Link to="/loja?aba=indicacoes" className="font-bold text-gold underline">ver indicações</Link></p>
         <button className="cta" onClick={onFinish}>Ver minha árvore</button>
       </section>
     )
@@ -50,6 +67,7 @@ export function CreateTree({ me, confirmed, justCreated, onConfirm, onFinish }: 
         <p className="font-hand text-2xl leading-none text-gold">Natal 2026 · @{me.username}</p>
         <h1 className="font-display text-3xl">Monte a sua árvore de Natal</h1>
         <p className="text-sm text-cream/70">Escolha com carinho: depois de criada, ela não poderá ser trocada.{restored && ' Continuamos de onde você parou.'}</p>
+        <p className="text-xs text-cream/60">Itens com 🔒 são especiais: compre com mimos na <Link to="/loja" className="font-bold text-gold underline">loja</Link> e volte aqui. O seu rascunho fica salvo.</p>
       </header>
       <div className="flex flex-col gap-5 lg:grid lg:grid-cols-[1fr_1.1fr]">
         <div className="sticky top-2 z-20 rounded-3xl border border-white/10 bg-night-2 p-2 lg:top-6 lg:self-start">
@@ -62,8 +80,8 @@ export function CreateTree({ me, confirmed, justCreated, onConfirm, onFinish }: 
           <Group title="Modelo" hint="Forma e cores da árvore">
             <div className="grid grid-cols-3 gap-2">
               {(Object.keys(MODELS) as TreeModel[]).map((m) => (
-                <button key={m} onClick={() => set({ model: m })} aria-pressed={look.model === m} className={opt(look.model === m)}>
-                  <Tree model={m} animated={false} base={false} className="mx-auto h-24" />{MODELS[m].name}
+                <button key={m} onClick={() => !priceOf('model', m) && set({ model: m })} aria-pressed={look.model === m} className={`${opt(look.model === m)} ${priceOf('model', m) ? 'opacity-60' : ''}`}>
+                  <Tree model={m} animated={false} base={false} className="mx-auto h-24" />{MODELS[m].name}{lockBadge('model', m)}
                 </button>
               ))}
             </div>
@@ -71,8 +89,8 @@ export function CreateTree({ me, confirmed, justCreated, onConfirm, onFinish }: 
           <Group title="Luzes" hint="A cor do pisca-pisca">
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
               {(Object.keys(LIGHTS) as LightsKey[]).map((k) => (
-                <button key={k} onClick={() => set({ lights: k })} aria-pressed={look.lights === k} className={opt(look.lights === k)}>
-                  <span className="mb-1 flex justify-center gap-1">{LIGHTS[k].colors.map((c) => <span key={c} className="h-3 w-3 rounded-full" style={{ background: c }} />)}</span>{LIGHTS[k].name}
+                <button key={k} onClick={() => !priceOf('lights', k) && set({ lights: k })} aria-pressed={look.lights === k} className={`${opt(look.lights === k)} ${priceOf('lights', k) ? 'opacity-60' : ''}`}>
+                  <span className="mb-1 flex justify-center gap-1">{LIGHTS[k].colors.map((c) => <span key={c} className="h-3 w-3 rounded-full" style={{ background: c }} />)}</span>{LIGHTS[k].name}{lockBadge('lights', k)}
                 </button>
               ))}
             </div>
@@ -80,8 +98,8 @@ export function CreateTree({ me, confirmed, justCreated, onConfirm, onFinish }: 
           <Group title="Enfeite do topo" hint="O que fica na ponta da árvore">
             <div className="grid grid-cols-3 gap-2">
               {TOPPERS.map((t) => (
-                <button key={t.key} onClick={() => set({ topper: t.key as TopperKey })} aria-pressed={look.topper === t.key} className={opt(look.topper === t.key)}>
-                  <svg viewBox="105 0 90 75" className="mx-auto h-14" aria-hidden="true"><TopperArt kind={t.key} glow="#ffcf6a" starFill="#f4b93a" /></svg>{t.name}
+                <button key={t.key} onClick={() => !priceOf('topper', t.key) && set({ topper: t.key as TopperKey })} aria-pressed={look.topper === t.key} className={`${opt(look.topper === t.key)} ${priceOf('topper', t.key) ? 'opacity-60' : ''}`}>
+                  <svg viewBox="105 0 90 75" className="mx-auto h-14" aria-hidden="true"><TopperArt kind={t.key} glow="#ffcf6a" starFill="#f4b93a" /></svg>{t.name}{lockBadge('topper', t.key)}
                 </button>
               ))}
             </div>
@@ -89,8 +107,8 @@ export function CreateTree({ me, confirmed, justCreated, onConfirm, onFinish }: 
           <Group title="Cenário" hint="O fundo, o chão e os presentes ao redor da árvore">
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
               {(Object.keys(SCENES) as SceneKey[]).map((k) => (
-                <button key={k} onClick={() => set({ scene: k })} aria-pressed={look.scene === k} className={opt(look.scene === k)}>
-                  <Tree model={look.model} lights={look.lights} topper={look.topper} scene={k} backdrop animated={false} className="mx-auto mb-1 h-28" />{SCENES[k].name}
+                <button key={k} onClick={() => !priceOf('scene', k) && set({ scene: k })} aria-pressed={look.scene === k} className={`${opt(look.scene === k)} ${priceOf('scene', k) ? 'opacity-60' : ''}`}>
+                  <Tree model={look.model} lights={look.lights} topper={look.topper} scene={k} backdrop animated={false} className="mx-auto mb-1 h-28" />{SCENES[k].name}{lockBadge('scene', k)}
                 </button>
               ))}
             </div>
