@@ -18,9 +18,9 @@ import type { AchievementRow } from '../lib/mimos'
 import { Medal } from '../components/Medal'
 import { FAV_DATES, favLabel } from '../lib/dates'
 
-type Props = { me: P; tree: TreeData | null; canShare?: boolean; onShare: () => void; onSaved: () => Promise<void>; onLogout: () => void; onNotify: (m: string) => void }
+type Props = { me: P; tree: TreeData; onShare: () => void; onSaved: () => Promise<void>; onLogout: () => void; onNotify: (m: string) => void }
 
-export function ProfileScreen({ me, tree, canShare = true, onShare, onSaved, onLogout, onNotify }: Props) {
+export function ProfileScreen({ me, tree, onShare, onSaved, onLogout, onNotify }: Props) {
   const [copied, setCopied] = useState(false)
   const [edit, setEdit] = useState(false)
   const [blocked, setBlocked] = useState(false)
@@ -28,10 +28,10 @@ export function ProfileScreen({ me, tree, canShare = true, onShare, onSaved, onL
   useEffect(() => { if (me.id) fetchCosmetics(me.id).then(setCos).catch(() => undefined) }, [me.id])
   const link = `${window.location.origin}/u/${me.username}`
   const copy = async () => { try { await navigator.clipboard.writeText(link); setCopied(true); setTimeout(() => setCopied(false), 2500) } catch { /* sem permissão */ } }
-  const n = (s: Side) => tree?.ornaments.filter((o) => o.side === s).length ?? 0   // sem árvore (não participou do evento): zeros
+  const n = (s: Side) => tree.ornaments.filter((o) => o.side === s).length
   return (
     <section className="relative isolate mx-auto max-w-md space-y-5 text-center">
-      <ProfileFx kind={cos.effect ?? undefined} />
+      <ProfileFx kind={cos.effect ?? undefined} full />
       <div className="flex flex-col items-center gap-2">
         <Avatar p={{ ...me, frame: cos.frame ?? undefined }} size={96} />
         <h1 className="font-display text-3xl">{me.name}</h1>
@@ -42,24 +42,22 @@ export function ProfileScreen({ me, tree, canShare = true, onShare, onSaved, onL
         {me.id && <AchievementsStrip userId={me.id} own />}
         <button onClick={() => setEdit(true)} className="text-sm font-bold text-cream/70 underline">Editar perfil</button>
       </div>
-      {tree && <Tree model={tree.model} lights={tree.lights} topper={tree.topper} scene={tree.scene} ornaments={tree.ornaments} animated={false} base={false} tags={false} className="mx-auto h-44" />}
+      <Tree model={tree.model} lights={tree.lights} topper={tree.topper} scene={tree.scene} ornaments={tree.ornaments} animated={false} base={false} tags={false} className="mx-auto h-44" />
       <div className="card flex items-center gap-2 p-2 pl-4 text-left">
         <span className="min-w-0 flex-1 truncate text-sm">{link}</span>
         <button onClick={copy} className="pill"><Icon name={copied ? 'check' : 'copy'} className="h-4 w-4" />{copied ? 'Copiado' : 'Copiar'}</button>
       </div>
-      {canShare && <ShareButton onClick={onShare} />}
+      <ShareButton onClick={onShare} />
       {me.music && <MusicPlayer url={me.music} owner={me.username} />}
       <div className="flex flex-wrap justify-center gap-2">
         <Link to="/loja" className="pill">loja e mimos</Link>
         <Link to="/conquistas" className="pill">conquistas</Link>
         <Link to={`/u/${me.username}`} className="pill">ver como os outros veem</Link>
       </div>
-      {tree && (
-        <div className="grid grid-cols-2 gap-3 text-sm">
-          <div className="card p-3"><b className="block font-display text-2xl text-gold">{n('frente')}/{SIDE_CAP}</b>na frente</div>
-          <div className="card p-3"><b className="block font-display text-2xl text-gold">{n('verso')}/{SIDE_CAP}</b>no verso</div>
-        </div>
-      )}
+      <div className="grid grid-cols-2 gap-3 text-sm">
+        <div className="card p-3"><b className="block font-display text-2xl text-gold">{n('frente')}/{SIDE_CAP}</b>na frente</div>
+        <div className="card p-3"><b className="block font-display text-2xl text-gold">{n('verso')}/{SIDE_CAP}</b>no verso</div>
+      </div>
       <div className="flex flex-col items-center gap-2">
         <button onClick={() => setBlocked(true)} className="font-bold text-cream/70 underline">Usuários bloqueados</button>
         <button onClick={onLogout} className="font-bold text-cream/70 underline">Sair da conta</button>
