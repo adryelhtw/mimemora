@@ -213,3 +213,27 @@ svg path[fill="#f2c46d"][stroke="#0a1a33"] { fill: #c9b58d; }
 svg[aria-label="mimemora"] path[fill="#ff9fb8"] { fill: #c99aa5; }
 svg[aria-label="mimemora"] path[fill="#f2c46d"] { fill: var(--champagne); }
 svg[aria-label="mimemora"] path[stroke="#f2c46d"] { stroke: var(--champagne); }
+
+/* ----- enfeites clicáveis (convite visual) ----- */
+.orn-hint { opacity: .7; transform-box: fill-box; transform-origin: center; animation: ornHint 2.4s ease-in-out infinite; }
+@keyframes ornHint { 0%, 100% { opacity: .25; transform: scale(.92); } 50% { opacity: .95; transform: scale(1.08); } }
+.orn-btn { transition: filter .15s ease; }
+.orn-btn:hover, .orn-btn:focus-visible { filter: brightness(1.2) drop-shadow(0 0 4px rgba(245, 217, 138, .9)); outline: none; }
+
+/* ----- carta: modal de abertura (envelope → aba → papel → mensagem) ----- */
+.env { position: relative; width: 224px; height: 150px; margin: 70px auto 10px; perspective: 700px; cursor: pointer; }
+.env-back { position: absolute; inset: 0; border-radius: 6px; background: #b9a06a; }
+.env-paper { position: absolute; left: 14px; right: 14px; top: 10px; height: 118px; border-radius: 4px; background: #fbf3e4; z-index: 1; transition: transform .7s cubic-bezier(.3, .9, .3, 1); }
+.env-front { position: absolute; inset: 0; z-index: 2; border-radius: 6px; background: #d3ba80; clip-path: polygon(0 100%, 0 18%, 50% 62%, 100% 18%, 100% 100%); }
+.env-flap { position: absolute; left: 0; right: 0; top: 0; height: 84px; z-index: 3; background: #e0c98f; clip-path: polygon(0 0, 100% 0, 50% 100%); transform-origin: top center; transition: transform .6s ease, z-index 0s linear 0s; }
+.env.is-open .env-flap { transform: rotateX(180deg); z-index: 0; transition: transform .6s ease, z-index 0s linear .3s; }
+.env.is-rise .env-paper { transform: translateY(-84px); }
+.env.is-wait .env-back { animation: envWait 1.2s ease-in-out infinite; }
+@keyframes envWait { 50% { filter: brightness(1.12); } }
+.letter-card { animation: letterFade .7s ease both; }
+.letter-card.simple { animation-duration: .18s; }
+@keyframes letterFade { from { opacity: 0; transform: translateY(8px); } }
+@media (prefers-reduced-motion: reduce) {
+  .env-paper, .env-flap, .env.is-open .env-flap { transition: none !important; }
+  .letter-card, .letter-card.simple, .orn-btn { animation: none !important; transition: none !important; }
+}

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import type { Gift, Ornament, Profile, Side, TreeData } from '../types'
 import { MODELS, SIDE_CAP } from '../events/natal-2026/Tree'
@@ -8,11 +8,14 @@ import { Countdown } from '../events/natal-2026/Countdown'
 import { Sheet } from '../components/ui'
 import { ShareButton } from '../components/ShareButton'
 import { Roulette } from '../components/Roulette'
+import { LetterModal } from '../components/LetterModal'
+import { RevealPanel } from '../components/RevealPanel'
+import { orderOrnaments, useOwnerLetters } from '../lib/letters'
 import { GiftInfoSheet, GiftsReceived } from '../components/GiftSheets'
 import type { EventRow } from '../lib/api'
 import { nowMs } from '../lib/clock'
 
-type Props = { me: Profile; tree: TreeData; event: EventRow; onShare: () => void }
+type Props = { me: Profile; tree: TreeData; event: EventRow; onShare: () => void; onRevealed: (iso: string) => void; onNotify: (m: string) => void }
 
 // Fases do evento (o servidor decide a abertura; aqui só mostramos em qual fase estamos).
 function PhaseBar({ event }: { event: EventRow }) {
@@ -30,8 +33,11 @@ function PhaseBar({ event }: { event: EventRow }) {
   )
 }
 
-export function Home({ me, tree, event, onShare }: Props) {
+export function Home({ me, tree, event, onShare, onRevealed, onNotify }: Props) {
   const [pick, setPick] = useState<Ornament | null>(null)
+  const [letterIdx, setLetterIdx] = useState<number | null>(null)
+  const { opened: openedIds, load: loadLetter } = useOwnerLetters(event.id, onRevealed)
+  const list = useMemo(() => orderOrnaments(tree.ornaments), [tree.ornaments])
   const [giftInfo, setGiftInfo] = useState<Gift | null>(null)
   const [side, setSide] = useState<Side>('frente')
   const [seenBack, setSeenBack] = useState(false)
@@ -40,12 +46,14 @@ export function Home({ me, tree, event, onShare }: Props) {
   const other: Side = side === 'frente' ? 'verso' : 'frente'
   const go = (s: Side) => { setSide(s); if (s === 'verso') setSeenBack(true) }
   const opened = nowMs() >= new Date(event.opens_at).getTime()
+  const openLetter = (o: Ornament) => { const i = list.findIndex((x) => x.id === o.id); if (i >= 0) setLetterIdx(i) }
+  const goLetter = (i: number) => { setLetterIdx(i); const o = list[i]; if (o) setSide(o.side) }
   return (
     <>
       <section className="grid items-center gap-6 lg:grid-cols-2">
         <div className="relative">
           <div className="glow" style={{ background: `radial-gradient(closest-side, ${MODELS[tree.model].glow}55, transparent 70%)` }} />
-          <TreeFlip side={side} model={tree.model} lights={tree.lights} topper={tree.topper} scene={tree.scene} backdrop ornaments={tree.ornaments} gifts={tree.gifts} onGift={setGiftInfo} onPick={setPick} className="relative mx-auto w-full max-w-[440px]" style={{ maxHeight: '58dvh' }} />
+          <TreeFlip side={side} model={tree.model} lights={tree.lights} topper={tree.topper} scene={tree.scene} backdrop ornaments={tree.ornaments} gifts={tree.gifts} onGift={setGiftInfo} onPick={opened ? openLetter : setPick} hint={opened} openedIds={openedIds} className="relative mx-auto w-full max-w-[440px]" style={{ maxHeight: '58dvh' }} />
           <div className="relative mt-3"><SideSwitch side={side} onSide={go} counts={counts} nudge={counts.verso > 0 && !seenBack} /></div>
           {counts[other] > 0 && (
             <button onClick={() => go(other)} className="card relative mt-3 w-full p-3 text-left">
@@ -59,12 +67,7 @@ export function Home({ me, tree, event, onShare }: Props) {
             <p className="font-hand text-2xl leading-none text-gold">Natal 2026 · @{me.username}</p>
             <h1 className="mt-1 font-display text-3xl leading-tight sm:text-4xl">Cada enfeite guarda um segredo</h1>
           </div>
-          {opened && (
-            <Link to="/revelacao" className="card block p-4 text-left hover:bg-white/10">
-              <b className="font-display text-lg text-gold">A revelação começou!</b><br />
-              <span className="text-sm text-cream/80">Abra as cartas e os presentes da sua árvore →</span>
-            </Link>
-          )}
+          {opened && <RevealPanel tree={tree} eventId={event.id} openedIds={openedIds} onNotify={onNotify} />}
           <Countdown />
           <PhaseBar event={event} />
           <ShareButton onClick={onShare} />
@@ -91,6 +94,7 @@ export function Home({ me, tree, event, onShare }: Props) {
         </div>
       </Sheet>
       <GiftInfoSheet gift={giftInfo} onClose={() => setGiftInfo(null)} />
+      <LetterModal list={list} index={letterIdx} onIndex={goLetter} onClose={() => setLetterIdx(null)} load={loadLetter} />
     </>
   )
 }

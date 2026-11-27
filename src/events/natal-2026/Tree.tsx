@@ -126,9 +126,9 @@ const swag = (t: number, b: number, w: number) => {
   return { y0, hw, pts: [0.08, 0.28, 0.5, 0.72, 0.92].map((k) => ({ x: 150 - hw + 2 * hw * k, y: y0 + 52 * (1 - k) * k })) }
 }
 
-type Props = { model: TreeModel; ornaments?: Ornament[]; onPick?: (o: Ornament) => void; animated?: boolean; base?: boolean; sealed?: boolean; lights?: LightsKey; topper?: TopperKey; side?: Side; scene?: SceneKey; backdrop?: boolean; tags?: boolean; gifts?: Gift[]; onGift?: (g: Gift) => void; slots?: { free: number[]; onPick: (n: number) => void } } & SVGProps<SVGSVGElement>
+type Props = { model: TreeModel; ornaments?: Ornament[]; onPick?: (o: Ornament) => void; animated?: boolean; base?: boolean; sealed?: boolean; lights?: LightsKey; topper?: TopperKey; side?: Side; scene?: SceneKey; backdrop?: boolean; tags?: boolean; gifts?: Gift[]; onGift?: (g: Gift) => void; hint?: boolean; openedIds?: Set<string>; slots?: { free: number[]; onPick: (n: number) => void } } & SVGProps<SVGSVGElement>
 
-export function Tree({ model, ornaments = [], onPick, animated = true, base = true, sealed = true, lights, topper = 'estrela', side = 'frente', scene = 'neve', backdrop = false, tags = true, slots, gifts, onGift, ...svg }: Props) {
+export function Tree({ model, ornaments = [], onPick, animated = true, base = true, sealed = true, lights, topper = 'estrela', side = 'frente', scene = 'neve', backdrop = false, tags = true, slots, gifts, onGift, hint = false, openedIds, ...svg }: Props) {
   const id = useId().replace(/[^a-zA-Z0-9_-]/g, ''), p = MODELS[model], u = (s: string) => `url(#${id}${s})`
   const tw = animated ? 'twinkle' : undefined
   const lc = lights ? LIGHTS[lights].colors : p.lights
@@ -230,12 +230,14 @@ export function Tree({ model, ornaments = [], onPick, animated = true, base = tr
         const [x, y] = SLOTS[o.slot] ?? SLOTS[0], s = 0.95
         const label = o.from ? `@${o.from.length > 12 ? o.from.slice(0, 11) + '…' : o.from}` : 'oculto', w = label.length * 4.8 + 9
         const act = onPick ? () => onPick(o) : undefined
+        const isOpen = !!openedIds?.has(o.id)   // carta já aberta: sem lacre nem brilho de convite
         return (
           <g key={o.id}>
             <circle cx={x} cy={y} r="25" fill={u('og')} />
+            {act && hint && !isOpen && <circle cx={x} cy={y} r="27" fill="none" stroke="#f5d98a" strokeWidth="1.6" className="orn-hint" pointerEvents="none" />}
             <g transform={`translate(${x - 20 * s} ${y - 26 * s}) scale(${s})`}>
               <g
-                className={animated ? 'sway' : undefined}
+                className={[animated ? 'sway' : '', act && hint ? 'orn-btn' : ''].join(' ').trim() || undefined}
                 style={{ animationDelay: `${-(o.slot % 7) * 0.6}s`, cursor: act ? 'pointer' : undefined }}
                 role={act ? 'button' : undefined}
                 tabIndex={act ? 0 : undefined}
@@ -244,7 +246,7 @@ export function Tree({ model, ornaments = [], onPick, animated = true, base = tr
                 onKeyDown={act ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); act() } } : undefined}
               >
                 <OrnamentArt type={o.type} />
-                {sealed && (
+                {sealed && !isOpen && (
                   <g transform="translate(29 36)">
                     <circle r="4.8" fill="#a3142f" stroke="#f5d98a" strokeWidth=".9" />
                     <path d="M-2.3-1.2 0 .9 2.3-1.2" stroke="#fff" strokeWidth=".9" fill="none" strokeLinecap="round" />

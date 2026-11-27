@@ -1,5 +1,5 @@
 import { supabase } from './supabase'
-import type { Gift, OrnamentType, Side } from '../types'
+import type { Gift } from '../types'
 
 export type CatalogItem = { id: string; kind: string; key: string; name: string; tier: 'inicial' | 'especial' | 'exclusivo'; price: number; event_kind: string | null; available_from: string | null; available_until: string | null; duration_days: number | null; description: string; sort: number; min_event_year: number | null }
 export type OwnedItem = { item_id: string; expires_at: string | null }
@@ -10,7 +10,7 @@ export type RouletteStatus = { can_spin: boolean; next_at: string; last: SpinRes
 export type AchievementRow = { id: string; event_kind: string | null; name: string | null; description: string | null; icon: string; secret: boolean; unlocked: boolean; unlocked_at: string | null; progress: number | null; target: number | null; reward_mimos: number | null; featured_rank: number | null }
 export type ReferralRow = { username: string; display_name: string | null; avatar_url: string | null; completed: boolean; created_at: string }
 export type RewardRule = { code: string; amount: number; description: string }
-export type Letter = { id: string; type: OrnamentType; side: Side; from: string; message: string | null }
+export type LetterResult = { body: string; first_time?: boolean; revealed_at?: string | null }
 
 async function rpc<T>(fn: string, args?: Record<string, unknown>): Promise<T> {
   const { data, error } = await supabase.rpc(fn, args)
@@ -69,15 +69,16 @@ export async function fetchGifts(participationId: string): Promise<Gift[]> {
   return ((data ?? []) as unknown as GiftRow[]).map((g) => ({ id: g.id, kind: g.kind, from: g.sender?.username ?? '', createdAt: g.created_at, expiresAt: g.expires_at, openedAt: g.opened_at }))
 }
 
-type LetterRow = { id: string; item_type: string; side: string; sender: { username: string } | null; contribution_messages: { body: string } | { body: string }[] | null }
-// Só o dono da árvore recebe o texto, e só depois da abertura: o banco devolve vazio antes disso.
-export async function fetchLetters(participationId: string): Promise<Letter[]> {
-  const { data, error } = await supabase.from('contributions').select('id,item_type,side,sender:profiles!contributions_sender_id_fkey(username),contribution_messages(body)').eq('participation_id', participationId).order('created_at')
+// Cartas: o texto nunca é lido direto da tabela. O dono abre pela função open_letter (registra a abertura) e os visitantes
+// leem pela read_letter (não registra nada); as duas conferem permissão e datas no servidor.
+export const openLetter = (id: string) => rpc<LetterResult>('open_letter', { p_contribution: id })
+export const readLetter = (id: string) => rpc<LetterResult>('read_letter', { p_contribution: id })
+export const setMemoryPublic = (participationId: string, isPublic: boolean) => rpc<void>('set_memory_visibility', { p_participation: participationId, p_public: isPublic })
+// Cartas que o dono já abriu neste evento (só ele enxerga as próprias linhas).
+export async function fetchOpenedIds(eventId: string): Promise<Set<string>> {
+  const { data, error } = await supabase.from('ornament_opens').select('decoration_id').eq('event_id', eventId)
   if (error) throw error
-  return ((data ?? []) as unknown as LetterRow[]).map((c) => {
-    const m = Array.isArray(c.contribution_messages) ? c.contribution_messages[0] : c.contribution_messages
-    return { id: c.id, type: c.item_type as OrnamentType, side: c.side as Side, from: c.sender?.username ?? '', message: m?.body ?? null }
-  })
+  return new Set((data ?? []).map((r) => r.decoration_id as string))
 }
 
 export const fetchAchievementCount = (userId: string) => rpc<number>('achievement_count', { p_user: userId })

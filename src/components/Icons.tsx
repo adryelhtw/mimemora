@@ -10,6 +10,8 @@ const P = {
   close: 'M6 6l12 12M18 6 6 18',
   flip: 'M4 12a8 8 0 0 1 14-5l2 2M20 4v5h-5M20 12a8 8 0 0 1-14 5l-2-2M4 20v-5h5',
   check: 'M5 12l5 5 9-10',
+  prev: 'M15 5l-7 7 7 7',
+  next: 'M9 5l7 7-7 7',
 } as const
 export type IconName = keyof typeof P
 

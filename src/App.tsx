@@ -20,7 +20,6 @@ import { syncClock } from './lib/clock'
 import { claimReferral } from './lib/mimos'
 import { Shop } from './screens/Shop'
 import { Achievements } from './screens/Achievements'
-import { Reveal } from './screens/Reveal'
 import { Home } from './screens/Home'
 import { Login, NEXT_KEY } from './screens/Login'
 import { Welcome } from './screens/Welcome'
@@ -69,6 +68,8 @@ function AppRoutes() {
   const mine: TreeData | null | undefined = !username ? null : mineBox?.user === username ? mineBox.tree : undefined
   const setMine = (t: TreeData | null) => { if (username) setMineBox({ user: username, tree: t }) }
 
+  // Primeira revelação gravada no servidor: o estado local acompanha (a introdução não volta e o Home mostra a árvore direto).
+  const onRevealed = (iso: string) => { if (mine && !mine.revealedAt) setMine({ ...mine, revealedAt: iso }) }
   const flash = (t: string) => { setToast(t); setTimeout(() => setToast(''), 4500) }
   const switchSnow = () => {
     const next = !snow
@@ -174,20 +175,20 @@ function AppRoutes() {
   else if (!event) content = <Notice title="Evento não encontrado">{`O evento Natal 2026 não foi encontrado no banco. Detalhe técnico: ${eventErr || 'sem detalhe'}`}</Notice>
   else content = (
     <Routes>
-      <Route path="/" element={gate(<Home me={me!} tree={mine!} event={event} onShare={openShare} />)} />
+      <Route path="/" element={gate(<Home me={me!} tree={mine!} event={event} onShare={openShare} onRevealed={onRevealed} onNotify={flash} />)} />
       <Route path="/entrar" element={session ? <Navigate to={username ? '/' : '/bem-vindo'} replace /> : <Login />} />
       <Route path="/bem-vindo" element={!session ? <Navigate to="/entrar" replace /> : username ? <Navigate to="/" replace /> : db ? <Welcome db={db} onDone={reloadProfile} /> : <Notice title="Perfil não encontrado">{`Não consegui carregar o seu perfil. Detalhe técnico: ${profileError || 'sem detalhe'}`}</Notice>} />
       <Route path="/criar-arvore" element={!session ? <Navigate to="/entrar" replace /> : !username ? <Navigate to="/bem-vindo" replace /> : mine && !justCreated ? <Navigate to="/" replace /> : <CreateTree me={me!} eventYear={event.year} confirmed={look} justCreated={justCreated} onConfirm={confirmTree} onFinish={() => { setJustCreated(false); navigate(takeNext() ?? '/') }} />} />
       <Route path="/enfeitar" element={gate(<Decorate me={me!} eventId={event.id} onPlace={place} onNotify={flash} />)} />
-      <Route path="/memorias" element={gate(<Memories userId={db?.id ?? ''} />)} />
+      <Route path="/memorias" element={gate(<Memories userId={db?.id ?? ''} username={username ?? ''} />)} />
       <Route path="/eventos" element={gate(<Events tree={mine!} />)} />
       <Route path="/perfil" element={gate(<ProfileScreen me={me!} tree={mine!} onShare={openShare} onSaved={reloadProfile} onLogout={signOut} onNotify={flash} />)} />
       <Route path="/loja" element={gateUser(<Shop me={me!} onNotify={flash} />)} />
       <Route path="/conquistas" element={gateUser(<Achievements />)} />
-      <Route path="/revelacao" element={gate(<Reveal tree={mine!} event={event} onNotify={flash} />)} />
+      <Route path="/revelacao" element={<Navigate to="/" replace />} />
       <Route path="/redefinir-senha" element={<ResetPassword hasSession={!!session} />} />
-      <Route path="/u/:username" element={<PublicTree me={me} eventId={event.id} onPlace={place} onNotify={flash} />} />
-      <Route path="/u/:username/:eventSlug" element={<PublicTree me={me} eventId={event.id} onPlace={place} onNotify={flash} />} />
+      <Route path="/u/:username" element={<PublicTree me={me} eventId={event.id} event={event} onPlace={place} onNotify={flash} />} />
+      <Route path="/u/:username/:eventSlug" element={<PublicTree me={me} eventId={event.id} event={event} onPlace={place} onNotify={flash} />} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   )

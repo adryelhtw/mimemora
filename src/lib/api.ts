@@ -34,6 +34,11 @@ const MESSAGES: Record<string, string> = {
   glow_active: 'Essa árvore já tem um Brilho Mágico ativo. Tente de novo quando ele terminar.',
   gifts_full: 'O pé dessa árvore já está cheio de presentes misteriosos.',
   too_many: 'Escolha no máximo 3 conquistas em destaque.',
+  not_owner: 'Só o dono da árvore pode abrir esta carta.',
+  not_allowed: 'Você não pode abrir esta carta por aqui.',
+  not_revealed: 'As mensagens desta árvore só aparecem depois que o dono fizer a revelação.',
+  private_memory: 'Esta memória é privada.',
+  letter_not_found: 'Essa carta não existe mais.',
 }
 export const errText = (e: unknown): string => {
   const x = e as { message?: string; code?: string } | null
@@ -122,7 +127,7 @@ export async function fetchPublic(username: string, eventId: string): Promise<{ 
   const cos = await fetchCosmetics(p.id).catch(() => ({ frame: null, effect: null }))
   owner.frame = cos.frame ?? undefined
   owner.effect = cos.effect ?? undefined
-  const { data: part, error: e2 } = await supabase.from('participations').select('id,config').eq('user_id', p.id).eq('event_id', eventId).maybeSingle()
+  const { data: part, error: e2 } = await supabase.from('participations').select('id,config,revealed_at,memory_public').eq('user_id', p.id).eq('event_id', eventId).maybeSingle()
   if (e2) throw e2
   if (!part) return { owner, tree: null }
   const { data: cs, error: e3 } = await supabase.from('contributions').select('id,item_type,side,slot,sender:profiles!contributions_sender_id_fkey(username)').eq('participation_id', part.id)
@@ -130,7 +135,7 @@ export async function fetchPublic(username: string, eventId: string): Promise<{ 
   const cfg = part.config as Look
   const gifts = await fetchGifts(part.id).catch(() => [])
   const ornaments: Ornament[] = ((cs ?? []) as unknown as CRow[]).map((c) => ({ id: c.id, type: c.item_type as OrnamentType, side: c.side as Side, slot: c.slot, from: c.sender?.username ?? '' }))   // '' = remetente oculto (bloqueio)
-  return { owner, tree: { id: part.id, owner, model: cfg.model, lights: cfg.lights, topper: cfg.topper, scene: cfg.scene, ornaments, gifts } }
+  return { owner, tree: { id: part.id, revealedAt: part.revealed_at as string | null, memoryPublic: !!part.memory_public, owner, model: cfg.model, lights: cfg.lights, topper: cfg.topper, scene: cfg.scene, ornaments, gifts } }
 }
 
 export async function searchTrees(q: string, eventId: string): Promise<TreeCard[]> {
@@ -152,24 +157,21 @@ export async function placeOrnament(...[participationId, type, message, side, sl
 }
 
 
-type MsgRow = { body: string }
-type MRow = { config: Look; events: { name: string; year: number }; contributions: { id: string; item_type: string; side: string; slot: number; sender: { username: string } | null; contribution_messages: MsgRow | MsgRow[] | null }[] }
+type MRow = { id: string; config: Look; memory_public: boolean; events: { name: string; year: number; slug: string }; contributions: { id: string; item_type: string; side: string; slot: number; sender: { username: string } | null }[] }
 
-// Memórias de quem está logado: árvores de edições já encerradas, com as mensagens que o dono já pode ler.
+// Memórias de quem está logado: árvores de edições já encerradas. As mensagens são lidas uma a uma (open_letter), nunca em lote.
 export async function fetchMemories(userId: string): Promise<Memory[]> {
   const { data, error } = await supabase
     .from('participations')
-    .select('id,config,events!inner(name,year,ends_at),contributions(id,item_type,side,slot,sender:profiles!contributions_sender_id_fkey(username),contribution_messages(body))')
+    .select('id,config,memory_public,events!inner(name,year,slug,ends_at),contributions(id,item_type,side,slot,sender:profiles!contributions_sender_id_fkey(username))')
     .eq('user_id', userId)
     .lt('events.ends_at', new Date().toISOString())
     .order('created_at', { ascending: false })
   if (error) throw error
   return ((data ?? []) as unknown as MRow[]).map((r) => ({
+    participationId: r.id, eventSlug: r.events.slug, isPublic: !!r.memory_public,
     year: r.events.year, eventName: r.events.name, model: r.config.model, lights: r.config.lights, topper: r.config.topper, scene: r.config.scene,
-    ornaments: r.contributions.map((c) => {
-      const m = Array.isArray(c.contribution_messages) ? c.contribution_messages[0] : c.contribution_messages
-      return { id: c.id, type: c.item_type as OrnamentType, side: c.side as Side, slot: c.slot, from: c.sender?.username ?? '?', message: m?.body }
-    }),
+    ornaments: r.contributions.map((c) => ({ id: c.id, type: c.item_type as OrnamentType, side: c.side as Side, slot: c.slot, from: c.sender?.username ?? '' })),
   }))
 }
 

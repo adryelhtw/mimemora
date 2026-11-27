@@ -5,6 +5,7 @@ import { SIDE_CAP } from '../events/natal-2026/Tree'
 import { SideSwitch, TreeFlip } from '../events/natal-2026/TreeFlip'
 import { Countdown } from '../events/natal-2026/Countdown'
 import { DecorateSheet } from '../components/DecorateSheet'
+import { LetterModal } from '../components/LetterModal'
 import { BlockSheet } from '../components/BlockSheet'
 import { MusicPlayer } from '../components/MusicPlayer'
 import { FollowStats } from '../components/FollowStats'
@@ -14,13 +15,18 @@ import { AchievementsStrip } from '../components/AchievementsStrip'
 import { GiftInfoSheet, SendGiftPanel } from '../components/GiftSheets'
 import { Avatar } from '../components/ui'
 import { errText, fetchIsFollowing, fetchPublic, setFollow } from '../lib/api'
-import type { PlaceFn } from '../lib/api'
+import type { EventRow, PlaceFn } from '../lib/api'
+import { nowMs } from '../lib/clock'
+import { orderOrnaments } from '../lib/letters'
+import type { LetterData } from '../lib/letters'
+import { readLetter } from '../lib/mimos'
 
 type State = { s: 'loading' } | { s: 'notfound' } | { s: 'notree'; owner: Profile } | { s: 'ok'; tree: TreeData }
-type Props = { me: Profile | null; eventId: string; onPlace: PlaceFn; onNotify: (m: string) => void }
+type Props = { me: Profile | null; eventId: string; event: EventRow; onPlace: PlaceFn; onNotify: (m: string) => void }
 
-// Página pública /u/:username (perfil + árvore). As mensagens nunca chegam aqui, e quem tem bloqueio com o dono não a encontra.
-export function PublicTree({ me, eventId, onPlace, onNotify }: Props) {
+// Página pública /u/:username (perfil + árvore). As mensagens só chegam, uma a uma, pela função read_letter (o servidor confere se o dono já
+// fez a revelação ou, encerrado o evento, se a memória é pública). Quem tem bloqueio com o dono não encontra a página.
+export function PublicTree({ me, eventId, event, onPlace, onNotify }: Props) {
   const { username = '' } = useParams()
   const navigate = useNavigate()
   const { pathname } = useLocation()
@@ -30,6 +36,7 @@ export function PublicTree({ me, eventId, onPlace, onNotify }: Props) {
   const [following, setFollowing] = useState<boolean | null>(null)
   const [blockOpen, setBlockOpen] = useState(false)
   const [giftInfo, setGiftInfo] = useState<Gift | null>(null)
+  const [letterIdx, setLetterIdx] = useState<number | null>(null)
 
   const load = useCallback(async () => {
     try {
@@ -75,6 +82,15 @@ export function PublicTree({ me, eventId, onPlace, onNotify }: Props) {
   const done = !!me && !!t && t.ornaments.some((o) => o.from === me.username)
   const counts: Record<Side, number> = { frente: t?.ornaments.filter((o) => o.side === 'frente').length ?? 0, verso: t?.ornaments.filter((o) => o.side === 'verso').length ?? 0 }
   const full = counts.frente + counts.verso >= SIDE_CAP * 2
+  // Mensagens: só para quem está logado e não é o dono. Em andamento: depois da primeira revelação do dono. Encerrado: se a memória for pública.
+  const ended = nowMs() >= new Date(event.ends_at).getTime()
+  const opened = nowMs() >= new Date(event.opens_at).getTime()
+  const canRead = !!t && opened && (ended ? !!t.memoryPublic : !!t.revealedAt)
+  const reader = !!me && !isMe && canRead
+  const list = t ? orderOrnaments(t.ornaments) : []
+  const pickLetter = (o: { id: string }) => { const i = list.findIndex((x) => x.id === o.id); if (i >= 0) setLetterIdx(i) }
+  const goLetter = (i: number) => { setLetterIdx(i); const o = list[i]; if (o) setSide(o.side) }
+  const readOne = async (o: { id: string }): Promise<LetterData> => ({ body: (await readLetter(o.id)).body, first: false })   // visitante: sempre abertura simples
   const place = async (...a: [Parameters<PlaceFn>[1], string, Side, number]) => {
     const e = await onPlace(t?.id ?? '', ...a)
     await load()   // atualiza as posições ocupadas (e mostra o novo enfeite)
@@ -86,7 +102,7 @@ export function PublicTree({ me, eventId, onPlace, onNotify }: Props) {
       <ProfileFx kind={owner.effect} />
       <div className="flex flex-col items-center gap-1">
         <Avatar p={owner} size={56} />
-        <p className="font-display text-sm uppercase tracking-[.3em] text-gold">Natal 2026</p>
+        <p className="font-display text-sm uppercase tracking-[.3em] text-gold">{ended ? 'Memória · Natal 2026' : 'Natal 2026'}</p>
         <h1 className="font-display text-3xl">Árvore de @{owner.username}</h1>
         <p className="text-sm text-cream/70">{owner.name}</p>
         {owner.about && <p className="font-hand text-xl text-cream/90">“{owner.about}”</p>}
@@ -98,17 +114,22 @@ export function PublicTree({ me, eventId, onPlace, onNotify }: Props) {
 
       {t ? (
         <>
-          <div className="relative"><div className="glow" /><TreeFlip side={side} model={t.model} lights={t.lights} topper={t.topper} scene={t.scene} backdrop ornaments={t.ornaments} gifts={t.gifts} onGift={setGiftInfo} className="relative mx-auto w-full max-w-[380px]" /></div>
+          <div className="relative"><div className="glow" /><TreeFlip side={side} model={t.model} lights={t.lights} topper={t.topper} scene={t.scene} backdrop ornaments={t.ornaments} gifts={t.gifts} onGift={setGiftInfo} onPick={reader ? pickLetter : undefined} hint={reader} className="relative mx-auto w-full max-w-[380px]" /></div>
           <SideSwitch side={side} onSide={setSide} counts={counts} />
-          <Countdown compact />
-          {!isMe && !me && <button className="cta" onClick={() => navigate(`/entrar?next=${encodeURIComponent(pathname)}`)}>Entrar para deixar um enfeite</button>}
-          {!isMe && me && <button className="cta disabled:opacity-60" disabled={done || full} onClick={() => setOpen(true)}>{done ? 'Já enfeitou' : full ? 'Esta árvore já está cheia' : 'Deixar um enfeite'}</button>}
-          {me && !isMe && <SendGiftPanel me={me} tree={t} onSent={load} onNotify={onNotify} />}
+          {reader && <p className="text-sm text-gold">Toque nos enfeites para ler as mensagens ✉️</p>}
+          {!me && canRead && <p className="text-sm text-cream/80"><Link to={`/entrar?next=${encodeURIComponent(pathname)}`} className="font-bold text-gold underline">Entre na sua conta</Link> para ler as mensagens dos enfeites.</p>}
+          {ended
+            ? <p className="text-sm text-cream/70">{t.memoryPublic ? 'Memória somente para leitura.' : ''}</p>
+            : <Countdown compact />}
+          {!ended && !isMe && !me && <button className="cta" onClick={() => navigate(`/entrar?next=${encodeURIComponent(pathname)}`)}>Entrar para deixar um enfeite</button>}
+          {!ended && !isMe && me && <button className="cta disabled:opacity-60" disabled={done || full} onClick={() => setOpen(true)}>{done ? 'Já enfeitou' : full ? 'Esta árvore já está cheia' : 'Deixar um enfeite'}</button>}
+          {!ended && me && !isMe && <SendGiftPanel me={me} tree={t} onSent={load} onNotify={onNotify} />}
           <GiftInfoSheet gift={giftInfo} onClose={() => setGiftInfo(null)} />
-          {me && <DecorateSheet target={open ? t : null} me={me} onClose={() => setOpen(false)} onPlace={place} />}
+          {!ended && me && <DecorateSheet target={open ? t : null} me={me} onClose={() => setOpen(false)} onPlace={place} />}
+          {reader && <LetterModal list={list} index={letterIdx} onIndex={goLetter} onClose={() => setLetterIdx(null)} load={readOne} />}
         </>
       ) : (
-        <p className="card p-6 text-cream/80">@{owner.username} ainda não criou a árvore de Natal.</p>
+        <p className="card p-6 text-cream/80">{ended ? `A árvore de Natal 2026 de @${owner.username} não está disponível: ainda não foi criada ou a memória é privada.` : `@${owner.username} ainda não criou a árvore de Natal.`}</p>
       )}
 
       {owner.music && <MusicPlayer url={owner.music} owner={owner.username} />}
