@@ -7,11 +7,16 @@ import { isUnique, saveProfile, usernameTaken } from '../lib/api'
 import type { DbProfile } from '../lib/api'
 import { Logo } from '../components/Logo'
 import { USERNAME_MAX, normalizeUsername, usernameError } from '../lib/username'
+import { FAV_DATES } from '../lib/dates'
+import { parseMusic } from '../lib/music'
 
 // Primeiro acesso (Google ou e-mail): escolher username, nome e foto/ícone. Depois, vai para a criação da árvore.
 export function Welcome({ db, onDone }: { db: DbProfile; onDone: () => Promise<void> }) {
   const [username, setUsername] = useState('')
   const [name, setName] = useState(db.display_name ?? '')
+  const [about, setAbout] = useState(db.about ?? '')
+  const [fav, setFav] = useState(db.favorite_date ?? '')
+  const [music, setMusic] = useState(db.music_url ?? '')
   const [choice, setChoice] = useState<AvatarChoice>(db.avatar_url ? { kind: 'keep' } : { kind: 'preset', key: PRESET_AVATARS[0].key })
   const [err, setErr] = useState('')
   const [busy, setBusy] = useState(false)
@@ -21,12 +26,13 @@ export function Welcome({ db, onDone }: { db: DbProfile; onDone: () => Promise<v
     const u = normalizeUsername(username), n = name.trim()
     const bad = usernameError(u) || (n ? '' : 'Escreva seu nome.')
     if (bad) { setErr(bad); return }
+    if (music.trim() && !parseMusic(music)) { setErr('Link de música não reconhecido. Use um link do YouTube ou do SoundCloud.'); return }
     setBusy(true); setErr('')
     try {
       if (await usernameTaken(u)) { setErr('Esse username já está em uso. Tente outro.'); return }
       let avatar_url: string | undefined
       try { avatar_url = await resolveAvatar(db.id, choice) } catch (x) { setErr((x as Error).message || 'Não consegui enviar a foto. Tente outra imagem ou escolha um ícone.'); return }
-      await saveProfile(db.id, { username: u, display_name: n, ...(avatar_url ? { avatar_url } : {}) })
+      await saveProfile(db.id, { username: u, display_name: n, about: about.trim() || null, favorite_date: fav || null, music_url: music.trim() || null, ...(avatar_url ? { avatar_url } : {}) })
       await onDone()
     } catch (x) {
       setErr(isUnique(x) ? 'Esse username já está em uso. Tente outro.' : 'Não consegui salvar agora. Tente de novo.')
@@ -52,6 +58,23 @@ export function Welcome({ db, onDone }: { db: DbProfile; onDone: () => Promise<v
         <label className="block">
           <span className="text-xs uppercase tracking-widest text-cream/60">Seu nome</span>
           <input value={name} maxLength={40} onChange={(e) => setName(e.target.value)} placeholder="Marina Souza" className="mt-1 w-full rounded-xl border border-white/15 bg-black/20 px-4 py-3" />
+        </label>
+        <label className="block">
+          <span className="text-xs uppercase tracking-widest text-cream/60">Sobre mim (opcional)</span>
+          <input value={about} maxLength={60} onChange={(e) => setAbout(e.target.value)} placeholder="uma frase curtinha sobre você" className="mt-1 w-full rounded-xl border border-white/15 bg-black/20 px-4 py-3" />
+          <span className="text-xs text-cream/50">{about.length}/60 · aparece no seu perfil público</span>
+        </label>
+        <label className="block">
+          <span className="text-xs uppercase tracking-widest text-cream/60">Data favorita (opcional)</span>
+          <select value={fav} onChange={(e) => setFav(e.target.value)} className="mt-1 w-full rounded-xl border border-white/15 bg-black/20 px-4 py-3" style={{ colorScheme: 'dark' }}>
+            <option value="">nenhuma</option>
+            {FAV_DATES.map((d) => <option key={d.key} value={d.key}>{d.emoji} {d.label}</option>)}
+          </select>
+        </label>
+        <label className="block">
+          <span className="text-xs uppercase tracking-widest text-cream/60">Música do seu perfil (opcional)</span>
+          <input value={music} maxLength={300} onChange={(e) => setMusic(e.target.value)} placeholder="cole um link do YouTube ou do SoundCloud" inputMode="url" className="mt-1 w-full rounded-xl border border-white/15 bg-black/20 px-4 py-3" />
+          <span className="text-xs text-cream/50">A música aparece no seu perfil. Deixe em branco para não adicionar.</span>
         </label>
         <button disabled={busy} className="cta disabled:opacity-50">{busy ? 'Salvando…' : 'Continuar e criar minha árvore'}</button>
         <p className="min-h-5 text-center text-sm font-bold text-gold" role="alert">{err}</p>
