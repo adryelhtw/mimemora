@@ -1,9 +1,10 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import type { Gift, TreeData } from '../types'
 import { errText } from '../lib/api'
 import { useMimos } from '../lib/mimosContext'
 import { markRevealSeen, openGift } from '../lib/mimos'
+import { supabase } from '../lib/supabase'
 
 // Painel da revelação na própria página inicial: boas-vindas (só até a primeira carta ser aberta), progresso,
 // presentes misteriosos e conclusão. As cartas em si abrem clicando nos enfeites da árvore (modal), sem trocar de página.
@@ -11,11 +12,19 @@ export function RevealPanel({ tree, eventId, openedIds, onNotify }: { tree: Tree
   const { refresh } = useMimos()
   const [gifts, setGifts] = useState<Gift[]>((tree.gifts ?? []).filter((g) => g.kind === 'misterioso'))
   const [won, setWon] = useState<Record<string, string>>({})
-  const [done, setDone] = useState(false)
+  // null = ainda perguntando ao servidor. A conclusão fica gravada no banco (public.reveals), então vale ao trocar de página, recarregar ou entrar em outro aparelho.
+  const [done, setDone] = useState<boolean | null>(null)
+  const [busy, setBusy] = useState(false)
   const [err, setErr] = useState('')
   const total = tree.ornaments.length
   const left = tree.ornaments.filter((o) => !openedIds.has(o.id)).length
   const intro = !tree.revealedAt && total > 0
+
+  useEffect(() => {
+    let alive = true
+    supabase.rpc('reveal_done', { p_event: eventId }).then(({ data, error }) => { if (alive) setDone(error ? false : !!data) })
+    return () => { alive = false }
+  }, [eventId])
 
   const unwrap = async (g: Gift) => {
     try {
@@ -26,8 +35,11 @@ export function RevealPanel({ tree, eventId, openedIds, onNotify }: { tree: Tree
     } catch (e) { setErr(errText(e)) }
   }
   const finish = async () => {
+    if (busy || done) return
+    setBusy(true)
     try { await markRevealSeen(eventId); setDone(true); refresh(); onNotify('Revelação concluída! Suas conquistas foram atualizadas.') }
     catch (e) { setErr(errText(e)) }
+    setBusy(false)
   }
 
   return (
@@ -60,9 +72,9 @@ export function RevealPanel({ tree, eventId, openedIds, onNotify }: { tree: Tree
         </div>
       )}
 
-      {!intro && (done
+      {!intro && done !== null && (done
         ? <p className="card p-4 text-center text-gold">Revelação concluída. <Link to="/conquistas" className="underline">Ver conquistas</Link></p>
-        : <button className="cta disabled:opacity-50" disabled={left > 0} onClick={finish}>{left > 0 ? 'Abra todas as cartas para concluir' : 'Concluir revelação'}</button>)}
+        : <button className="cta disabled:opacity-50" disabled={left > 0 || busy} onClick={finish}>{left > 0 ? 'Abra todas as cartas para concluir' : 'Concluir revelação'}</button>)}
     </div>
   )
 }

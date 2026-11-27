@@ -50,7 +50,7 @@ export function Home({ me, tree, event, onShare, onRevealed, onNotify }: Props) 
   const goLetter = (i: number) => { setLetterIdx(i); const o = list[i]; if (o) setSide(o.side) }
   return (
     <>
-      <section className="grid items-center gap-6 lg:grid-cols-2">
+      <section className="grid items-start gap-6 lg:grid-cols-2">
         <div className="relative">
           <div className="glow" style={{ background: `radial-gradient(closest-side, ${MODELS[tree.model].glow}55, transparent 70%)` }} />
           <TreeFlip side={side} model={tree.model} lights={tree.lights} topper={tree.topper} scene={tree.scene} backdrop ornaments={tree.ornaments} gifts={tree.gifts} onGift={setGiftInfo} onPick={opened ? openLetter : setPick} hint={opened} openedIds={openedIds} className="relative mx-auto w-full max-w-[440px]" style={{ maxHeight: '58dvh' }} />
