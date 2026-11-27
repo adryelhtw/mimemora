@@ -4,8 +4,8 @@ import type { Look, Memory, Ornament, OrnamentType, Profile, Side, TreeData } fr
 
 export const EVENT_SLUG = 'natal-2026'
 
-export type DbProfile = { id: string; username: string | null; display_name: string | null; avatar_url: string | null; music_url?: string | null; card_url?: string | null }
-export type EventRow = { id: string; slug: string; name: string; starts_at: string; opens_at: string; ends_at: string; expectation_at: string | null }
+export type DbProfile = { id: string; username: string | null; display_name: string | null; avatar_url: string | null; music_url?: string | null; card_url?: string | null; about?: string | null; favorite_date?: string | null }
+export type EventRow = { id: string; slug: string; name: string; starts_at: string; opens_at: string; ends_at: string; year: number; expectation_at: string | null }
 export type TreeCard = { id: string; owner: Profile; look: Look; count: number }
 export type PlaceFn = (participationId: string, type: OrnamentType, message: string, side: Side, slot: number) => Promise<string | null>
 
@@ -31,6 +31,9 @@ const MESSAGES: Record<string, string> = {
   not_open_yet: 'Ainda não é hora de abrir. Aguarde a revelação.',
   not_owned: 'Você não tem esse item.',
   roulette_unavailable: 'A roleta está descansando. Volte mais tarde.',
+  glow_active: 'Essa árvore já tem um Brilho Mágico ativo. Tente de novo quando ele terminar.',
+  gifts_full: 'O pé dessa árvore já está cheio de presentes misteriosos.',
+  too_many: 'Escolha no máximo 3 conquistas em destaque.',
 }
 export const errText = (e: unknown): string => {
   const x = e as { message?: string; code?: string } | null
@@ -39,16 +42,16 @@ export const errText = (e: unknown): string => {
 export const isUnique = (e: unknown) => (e as { code?: string } | null)?.code === '23505'
 
 const hueOf = (s: string) => [...s].reduce((h, c) => (h * 31 + c.charCodeAt(0)) % 360, 7)
-export const toProfile = (r: DbProfile): Profile => ({ id: r.id, username: r.username ?? '', name: r.display_name || r.username || 'Amigo', hue: hueOf(r.username ?? ''), photo: r.avatar_url ?? undefined, music: r.music_url ?? undefined })
+export const toProfile = (r: DbProfile): Profile => ({ id: r.id, username: r.username ?? '', name: r.display_name || r.username || 'Amigo', hue: hueOf(r.username ?? ''), photo: r.avatar_url ?? undefined, music: r.music_url ?? undefined, about: r.about ?? undefined, favoriteDate: r.favorite_date ?? undefined })
 
 export async function fetchEvent(): Promise<EventRow | null> {
-  const { data, error } = await supabase.from('events').select('id,slug,name,starts_at,opens_at,ends_at,expectation_at').eq('slug', EVENT_SLUG).maybeSingle()
+  const { data, error } = await supabase.from('events').select('id,slug,name,starts_at,opens_at,ends_at,year,expectation_at').eq('slug', EVENT_SLUG).maybeSingle()
   if (error) throw error
   return data
 }
 
 export async function fetchDbProfile(userId: string): Promise<DbProfile | null> {
-  const { data, error } = await supabase.from('profiles').select('id,username,display_name,avatar_url,music_url,card_url').eq('id', userId).maybeSingle()
+  const { data, error } = await supabase.from('profiles').select('id,username,display_name,avatar_url,music_url,card_url,about,favorite_date').eq('id', userId).maybeSingle()
   if (error) throw error
   return data
 }
@@ -71,7 +74,7 @@ export async function usernameTaken(username: string): Promise<boolean> {
   return (count ?? 0) > 0
 }
 
-export async function saveProfile(userId: string, patch: { username?: string; display_name?: string; avatar_url?: string; music_url?: string | null }) {
+export async function saveProfile(userId: string, patch: { username?: string; display_name?: string; avatar_url?: string; music_url?: string | null; about?: string | null; favorite_date?: string | null }) {
   const { error } = await supabase.from('profiles').update(patch).eq('id', userId)
   if (error) throw error
 }
@@ -112,7 +115,7 @@ type CRow = { id: string; item_type: string; side: string; slot: number; sender:
 
 // Perfil público + árvore + enfeites (com o username de quem enfeitou). Nunca traz mensagens.
 export async function fetchPublic(username: string, eventId: string): Promise<{ owner: Profile; tree: TreeData | null } | null> {
-  const { data: p, error } = await supabase.from('profiles').select('id,username,display_name,avatar_url,music_url').eq('username', username).maybeSingle()
+  const { data: p, error } = await supabase.from('profiles').select('id,username,display_name,avatar_url,music_url,about,favorite_date').eq('username', username).maybeSingle()
   if (error) throw error
   if (!p) return null
   const owner = toProfile(p as DbProfile)

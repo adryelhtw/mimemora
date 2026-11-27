@@ -86,7 +86,7 @@ export function Shop({ me, onNotify }: { me: Profile; onNotify: (m: string) => v
         <Preview it={it} me={me} />
         <b>{it.name}</b>
         <p className="text-xs text-cream/70">{it.description}</p>
-        <p className="text-[11px] text-cream/60">{it.tier === 'exclusivo' ? 'exclusivo · ' : ''}{it.kind === 'gift' ? 'presente' : dur(it)}{it.available_until ? ` · à venda até ${day(it.available_until)}` : ''}</p>
+        <p className="text-[11px] text-cream/60">{it.tier === 'exclusivo' ? 'exclusivo · ' : ''}{it.kind === 'gift' ? 'presente' : dur(it)}{it.available_until ? ` · à venda até ${day(it.available_until)}` : ''}{it.min_event_year ? ` · usável a partir do Natal ${it.min_event_year}` : ''}</p>
         {it.kind === 'gift' ? <p className="text-sm font-bold text-gold">{it.price} mimos · envie pelo perfil de um amigo</p>
           : it.tier === 'exclusivo' ? <p className="text-sm text-cream/70">só em campanhas e presentes</p>
           : mine ? <p className="text-sm font-bold text-gold">já é seu ✓</p>

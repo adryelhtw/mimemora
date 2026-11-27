@@ -44,7 +44,7 @@ export function Reveal({ tree, event, onNotify }: { tree: TreeData; event: Event
   const unwrap = async (g: Gift) => {
     try {
       const r = await openGift(g.id)
-      setWon((w) => ({ ...w, [g.id]: r.name ?? `${r.mimos} mimos` }))
+      setWon((w) => ({ ...w, [g.id]: r.converted ? `${r.mimos} mimos (você já tinha o item, então os mimos vieram no lugar!)` : (r.name ?? `${r.mimos} mimos`) }))
       setGifts((gs) => gs.map((x) => (x.id === g.id ? { ...x, openedAt: new Date().toISOString() } : x)))
       refresh()
     } catch (e) { setErr(errText(e)) }

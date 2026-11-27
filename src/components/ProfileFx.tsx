@@ -11,8 +11,10 @@ export function ProfileFx({ kind }: { kind?: string }) {
       {kind === 'brilhos' && dots(18).map((d, i) => (
         <span key={i} className="fx-dot" style={{ left: `${d.left}%`, width: d.size, height: d.size, background: '#fff3b0', boxShadow: '0 0 8px 2px rgba(242,196,109,.8)', animationDuration: `${d.dur}s`, animationDelay: `${d.delay}s` } as CSSProperties} />
       ))}
-      {kind === 'flocos' && dots(26).map((d, i) => (
-        <span key={i} className="flake" style={{ left: `${d.left}%`, width: d.size + 1, height: d.size + 1, opacity: 0.8, animationDuration: `${d.dur * 2}s`, animationDelay: `${d.delay}s`, '--dx': '20px' } as CSSProperties} />
+      {kind === 'estrelas' && dots(16).map((d, i) => (
+        <svg key={i} className="fx-star" viewBox="-7 -7 14 14" style={{ left: `${d.left}%`, top: `${(i * 23 + 8) % 80}%`, width: 8 + (i % 3) * 4, height: 8 + (i % 3) * 4, animationDuration: `${2 + (i % 4) * 0.6}s`, animationDelay: `${d.delay}s` } as CSSProperties}>
+          <path d="M0-7 1.8-1.8 7 0 1.8 1.8 0 7-1.8 1.8-7 0-1.8-1.8Z" fill="#fff3b0" />
+        </svg>
       ))}
     </div>
   )

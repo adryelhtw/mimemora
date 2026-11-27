@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import type { Gift, Profile, TreeData } from '../types'
 import { Sheet } from './ui'
+import { MAX_BOXES } from '../events/natal-2026/Tree'
 import { fetchCatalog, sendGift } from '../lib/mimos'
 import type { CatalogItem } from '../lib/mimos'
 import { errText } from '../lib/api'
@@ -12,6 +13,7 @@ const KIND = { brilho: 'Brilho Mágico', misterioso: 'Presente Misterioso' }
 const who = (g: Gift) => (g.from ? `@${g.from}` : 'alguém (oculto)')
 
 // Enviar presentes a um amigo (comprados com mimos, além do enfeite tradicional).
+// Regras: um Brilho Mágico por vez em cada árvore; até 5 Presentes Misteriosos por árvore (1 por pessoa).
 export function SendGiftPanel({ me, tree, onSent, onNotify }: { me: Profile; tree: TreeData; onSent: () => void; onNotify: (m: string) => void }) {
   const { balance, refresh } = useMimos()
   const [catalog, setCatalog] = useState<CatalogItem[]>([])
@@ -20,7 +22,9 @@ export function SendGiftPanel({ me, tree, onSent, onNotify }: { me: Profile; tre
   const [err, setErr] = useState('')
   useEffect(() => { fetchCatalog().then(setCatalog).catch(() => undefined) }, [])
   const price = (k: 'brilho' | 'misterioso') => catalog.find((c) => c.id === `gift:${k}`)?.price ?? 0
-  const sent = (k: string) => !!tree.gifts?.some((g) => g.kind === k && g.from === me.username)
+  const glow = tree.gifts?.find((g) => g.kind === 'brilho' && g.expiresAt && new Date(g.expiresAt).getTime() > nowMs())
+  const boxes = tree.gifts?.filter((g) => g.kind === 'misterioso').length ?? 0
+  const sentBox = !!tree.gifts?.some((g) => g.kind === 'misterioso' && g.from === me.username)
 
   const confirm = async () => {
     if (!ask || !tree.id) return
@@ -30,14 +34,14 @@ export function SendGiftPanel({ me, tree, onSent, onNotify }: { me: Profile; tre
       await refresh(true)
       onNotify(ask === 'brilho' ? 'Brilho Mágico enviado! ✦' : 'Presente Misterioso enviado! A caixa já está na árvore.')
       setAsk(null); onSent()
-    } catch (e) { setErr(errText(e)) } finally { setBusy(false) }
+    } catch (e) { setErr(errText(e)); onSent() } finally { setBusy(false) }
   }
 
-  const card = (k: 'brilho' | 'misterioso', title: string, text: string) => (
-    <button key={k} onClick={() => { setErr(''); setAsk(k) }} disabled={sent(k)} className="card p-3 text-left disabled:opacity-60">
+  const card = (k: 'brilho' | 'misterioso', title: string, text: string, disabled: boolean, status: string) => (
+    <button key={k} onClick={() => { setErr(''); setAsk(k) }} disabled={disabled} className="card p-3 text-left disabled:opacity-60">
       <b className="block font-display text-lg">{title}</b>
       <span className="text-xs text-cream/75">{text}</span>
-      <span className="mt-1 block text-sm font-bold text-gold">{sent(k) ? 'já enviado ✓' : `${price(k)} mimos`}</span>
+      <span className="mt-1 block text-sm font-bold text-gold">{status}</span>
     </button>
   )
   const enough = (balance ?? 0) >= (ask ? price(ask) : 0)
@@ -45,15 +49,18 @@ export function SendGiftPanel({ me, tree, onSent, onNotify }: { me: Profile; tre
     <div className="space-y-2 text-left">
       <p className="text-center text-xs uppercase tracking-widest text-cream/60">presentes especiais · além do seu enfeite</p>
       <div className="grid grid-cols-2 gap-2">
-        {card('brilho', 'Brilho Mágico', 'Envolve a árvore com uma luz por 3 dias. Seu nome aparece num selo.')}
-        {card('misterioso', 'Presente Misterioso', 'Uma caixa no pé da árvore. Só abre na revelação, com surpresa.')}
+        {card('brilho', 'Brilho Mágico', 'Envolve a árvore (frente e verso) com uma luz por 3 dias. Seu nome aparece num selo.', !!glow,
+          glow ? `já tem um brilho ativo até ${fmt(glow.expiresAt!)} (de ${who(glow)})` : `${price('brilho')} mimos`)}
+        {card('misterioso', 'Presente Misterioso', 'Uma caixa no pé da árvore. Só abre na revelação, com surpresa.', sentBox || boxes >= MAX_BOXES,
+          sentBox ? 'já enviado ✓' : boxes >= MAX_BOXES ? `o pé da árvore está cheio (${boxes}/${MAX_BOXES})` : `${price('misterioso')} mimos · ${boxes}/${MAX_BOXES} caixas`)}
       </div>
+      <p className="text-center text-[11px] text-cream/50">Cada árvore tem um Brilho Mágico por vez e comporta até {MAX_BOXES} presentes misteriosos (um por pessoa).</p>
       <Sheet open={!!ask} onClose={() => setAsk(null)} title={ask ? KIND[ask] : ''}>
         <div className="space-y-3 text-center">
           <p className="text-sm text-cream/85">
             {ask === 'brilho'
-              ? `O Brilho Mágico envolve a árvore de @${tree.owner.username} por 3 dias e mostra um selo com o seu nome. Não muda a aparência da árvore.`
-              : `O Presente Misterioso fica numa caixa no pé da árvore de @${tree.owner.username}, com o seu nome. Ninguém vê o conteúdo: ele só abre na revelação.`}
+              ? `O Brilho Mágico envolve a árvore de @${tree.owner.username}, na frente e no verso, por 3 dias e mostra um selo com o seu nome. Só um brilho fica ativo por vez: se outra pessoa enviar antes, você precisa esperar ele terminar. Não muda a aparência da árvore.`
+              : `O Presente Misterioso fica numa caixa no pé da árvore de @${tree.owner.username}, com o seu nome. Ninguém vê o conteúdo: ele só abre na revelação. Se a pessoa já tiver o item, ganha mimos no lugar.`}
           </p>
           <p className="text-sm">Custa <b className="text-gold">{ask ? price(ask) : 0} mimos</b> · seu saldo: {balance ?? 0}</p>
           <button className="cta disabled:opacity-50" disabled={busy || !enough} onClick={confirm}>{busy ? 'Enviando…' : enough ? 'Enviar presente' : 'Mimos insuficientes'}</button>

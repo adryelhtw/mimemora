@@ -1,13 +1,13 @@
 import { supabase } from './supabase'
 import type { Gift, OrnamentType, Side } from '../types'
 
-export type CatalogItem = { id: string; kind: string; key: string; name: string; tier: 'inicial' | 'especial' | 'exclusivo'; price: number; event_kind: string | null; available_from: string | null; available_until: string | null; duration_days: number | null; description: string; sort: number }
+export type CatalogItem = { id: string; kind: string; key: string; name: string; tier: 'inicial' | 'especial' | 'exclusivo'; price: number; event_kind: string | null; available_from: string | null; available_until: string | null; duration_days: number | null; description: string; sort: number; min_event_year: number | null }
 export type OwnedItem = { item_id: string; expires_at: string | null }
 export type LedgerRow = { id: number; amount: number; reason: string; created_at: string }
 export type Prize = { id: number; label: string; kind: 'mimos' | 'item'; amount: number; rarity: 'comum' | 'incomum' | 'raro'; chance: number }
 export type SpinResult = { prize_id: number; kind: 'mimos' | 'item'; amount: number; item_id: string | null; label: string; rarity: string; converted?: boolean; balance?: number }
 export type RouletteStatus = { can_spin: boolean; next_at: string; last: SpinResult | null; prizes: Prize[] }
-export type AchievementRow = { id: string; event_kind: string | null; name: string | null; description: string | null; icon: string; secret: boolean; unlocked: boolean; unlocked_at: string | null; progress: number | null; target: number | null; reward_mimos: number | null }
+export type AchievementRow = { id: string; event_kind: string | null; name: string | null; description: string | null; icon: string; secret: boolean; unlocked: boolean; unlocked_at: string | null; progress: number | null; target: number | null; reward_mimos: number | null; featured_rank: number | null }
 export type ReferralRow = { username: string; display_name: string | null; avatar_url: string | null; completed: boolean; created_at: string }
 export type RewardRule = { code: string; amount: number; description: string }
 export type Letter = { id: string; type: OrnamentType; side: Side; from: string; message: string | null }
@@ -50,7 +50,7 @@ export const equipItem = (kind: 'frame' | 'effect', key: string) => rpc<void>('e
 export const rouletteStatus = () => rpc<RouletteStatus>('roulette_status')
 export const spinRoulette = () => rpc<SpinResult>('spin_roulette')
 export const sendGift = (participationId: string, kind: 'brilho' | 'misterioso') => rpc<string>('send_gift', { p_participation_id: participationId, p_kind: kind })
-export const openGift = (id: string) => rpc<{ item_id: string | null; name: string | null; mimos: number }>('open_gift', { p_gift: id })
+export const openGift = (id: string) => rpc<{ item_id: string | null; name: string | null; mimos: number; converted?: boolean }>('open_gift', { p_gift: id })
 export const claimReferral = (code: string) => rpc<boolean>('claim_referral', { p_code: code })
 export const fetchReferrals = () => rpc<ReferralRow[]>('my_referrals')
 export const fetchAchievements = () => rpc<AchievementRow[]>('my_achievements')
@@ -79,3 +79,6 @@ export async function fetchLetters(participationId: string): Promise<Letter[]> {
     return { id: c.id, type: c.item_type as OrnamentType, side: c.side as Side, from: c.sender?.username ?? '', message: m?.body ?? null }
   })
 }
+
+export const fetchAchievementCount = (userId: string) => rpc<number>('achievement_count', { p_user: userId })
+export const setFeaturedAchievements = (ids: string[]) => rpc<void>('set_featured_achievements', { p_ids: ids })

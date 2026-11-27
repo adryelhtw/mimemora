@@ -93,6 +93,7 @@ export const SIDE_CAP = SLOTS.length
 
 const AURA_SPARKS: [number, number, number][] = [[24, 60, 1], [276, 90, 0.9], [18, 200, 1], [282, 230, 0.8], [40, 330, 0.9], [262, 340, 1], [150, 14, 1.1], [96, 30, 0.8], [210, 40, 0.9]]
 const BOX_X = [150, 112, 188, 74, 226]
+export const MAX_BOXES = BOX_X.length   // presentes misteriosos que cabem no pé da árvore
 const BOX_COLORS = ['#c9172f', '#2f6fb5', '#1f8a5b', '#8b5fd6', '#e0a82e']
 const SPARKLES: [number, number, number][] = [[44, 112, 1], [258, 160, 0.8], [38, 262, 0.9], [264, 304, 0.7]]
 
@@ -188,7 +189,7 @@ export function Tree({ model, ornaments = [], onPick, animated = true, base = tr
         <path key={i} d="M0-7 1.8-1.8 7 0 1.8 1.8 0 7-1.8 1.8-7 0-1.8-1.8Z" transform={`translate(${x} ${y}) scale(${k})`} fill="#fff8d6" className="twinkle" style={{ animationDelay: `${-i * 0.9}s` }} />
       ))}
       {base && <Gifts scene={scene} />}
-      {side === 'frente' && boxes.map((g, i) => {
+      {boxes.map((g, i) => {
         const act = onGift ? () => onGift(g) : undefined
         const sender = g.from ? `@${g.from}` : '@oculto'
         const shortSender = sender.length > 7 ? `${sender.slice(0, 6)}…` : sender

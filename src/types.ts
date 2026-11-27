@@ -12,7 +12,7 @@ export type SceneKey = 'neve' | 'lareira' | 'floresta' | 'aurora' | 'praia' | 'd
 export type Look = { model: TreeModel; lights: LightsKey; topper: TopperKey; scene: SceneKey }
 
 export type Gift = { id: string; kind: 'brilho' | 'misterioso'; from: string; createdAt: string; expiresAt: string | null; openedAt: string | null }
-export type Profile = { id?: string; username: string; name: string; hue: number; photo?: string; music?: string; frame?: string; effect?: string }
+export type Profile = { id?: string; username: string; name: string; hue: number; photo?: string; music?: string; frame?: string; effect?: string; about?: string; favoriteDate?: string }
 // `message` só existe nos dados de Memórias (já reveladas). Na árvore atual a mensagem nunca vem para o front.
 export type Side = 'frente' | 'verso'
 export type Ornament = { id: string; type: OrnamentType; side: Side; slot: number; from: string; message?: string }

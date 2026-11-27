@@ -13,7 +13,10 @@ import { FollowStats } from '../components/FollowStats'
 import { MusicPlayer } from '../components/MusicPlayer'
 import { ProfileFx } from '../components/ProfileFx'
 import { AchievementsStrip } from '../components/AchievementsStrip'
-import { fetchCosmetics } from '../lib/mimos'
+import { fetchAchievements, fetchCosmetics, setFeaturedAchievements } from '../lib/mimos'
+import type { AchievementRow } from '../lib/mimos'
+import { Medal } from '../components/Medal'
+import { FAV_DATES, favLabel } from '../lib/dates'
 
 type Props = { me: P; tree: TreeData; onShare: () => void; onSaved: () => Promise<void>; onLogout: () => void; onNotify: (m: string) => void }
 
@@ -33,6 +36,8 @@ export function ProfileScreen({ me, tree, onShare, onSaved, onLogout, onNotify }
         <Avatar p={{ ...me, frame: cos.frame ?? undefined }} size={96} />
         <h1 className="font-display text-3xl">{me.name}</h1>
         <p className="text-gold">@{me.username}</p>
+        {me.about && <p className="font-hand text-xl text-cream/90">“{me.about}”</p>}
+        {me.favoriteDate && <p className="text-xs text-cream/65">data favorita: {favLabel(me.favoriteDate)}</p>}
         {me.id && <FollowStats userId={me.id} />}
         {me.id && <AchievementsStrip userId={me.id} own />}
         <button onClick={() => setEdit(true)} className="text-sm font-bold text-cream/70 underline">Editar perfil</button>
@@ -94,10 +99,23 @@ function BlockedList({ onNotify }: { onNotify: (m: string) => void }) {
 
 function EditForm({ me, onSaved, onClose }: { me: P; onSaved: () => Promise<void>; onClose: () => void }) {
   const [name, setName] = useState(me.name)
+  const [about, setAbout] = useState(me.about ?? '')
+  const [fav, setFav] = useState(me.favoriteDate ?? '')
   const [music, setMusic] = useState(me.music ?? '')
   const [choice, setChoice] = useState<AvatarChoice>({ kind: 'keep' })
+  const [ach, setAch] = useState<AchievementRow[] | null>(null)
+  const [featured, setFeatured] = useState<string[]>([])
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState('')
+  useEffect(() => {
+    fetchAchievements().then((r) => {
+      const got = r.filter((x) => x.unlocked)
+      setAch(got)
+      setFeatured(got.filter((x) => x.featured_rank).sort((a, b) => (a.featured_rank ?? 0) - (b.featured_rank ?? 0)).map((x) => x.id))
+    }).catch(() => setAch([]))
+  }, [])
+  const toggle = (id: string) => setFeatured((f) => (f.includes(id) ? f.filter((x) => x !== id) : f.length >= 3 ? f : [...f, id]))
+
   const save = async () => {
     if (!me.id || !name.trim()) { setErr('Escreva seu nome.'); return }
     if (music.trim() && !parseMusic(music)) { setErr('Link de música não reconhecido. Use um link do YouTube ou do SoundCloud.'); return }
@@ -105,21 +123,56 @@ function EditForm({ me, onSaved, onClose }: { me: P; onSaved: () => Promise<void
     try {
       let avatar_url: string | undefined
       try { avatar_url = await resolveAvatar(me.id, choice) } catch (x) { setErr((x as Error).message || 'Não consegui enviar a foto.'); return }
-      try { await saveProfile(me.id, { display_name: name.trim(), music_url: music.trim() || null, ...(avatar_url ? { avatar_url } : {}) }) } catch { setErr('Não consegui salvar o perfil agora. Tente de novo.'); return }
+      try {
+        await saveProfile(me.id, { display_name: name.trim(), about: about.trim() || null, favorite_date: fav || null, music_url: music.trim() || null, ...(avatar_url ? { avatar_url } : {}) })
+      } catch { setErr('Não consegui salvar o perfil agora. Tente de novo.'); return }
+      if (ach) { try { await setFeaturedAchievements(featured) } catch { setErr('O perfil foi salvo, mas não consegui salvar as conquistas em destaque.'); return } }
       await onSaved()
       onClose()
     } finally { setBusy(false) }
   }
+  const field = 'mt-1 w-full rounded-xl border border-white/15 bg-black/20 px-4 py-3'
   return (
     <div className="space-y-4">
       <AvatarPicker current={me.photo} name={me.name} choice={choice} onChange={setChoice} />
       <label className="block">
         <span className="text-xs uppercase tracking-widest text-cream/60">Nome</span>
-        <input value={name} maxLength={40} onChange={(e) => setName(e.target.value)} className="mt-1 w-full rounded-xl border border-white/15 bg-black/20 px-4 py-3" />
+        <input value={name} maxLength={40} onChange={(e) => setName(e.target.value)} className={field} />
       </label>
       <label className="block">
+        <span className="text-xs uppercase tracking-widest text-cream/60">Sobre mim (opcional)</span>
+        <input value={about} maxLength={60} onChange={(e) => setAbout(e.target.value)} placeholder="uma frase curtinha sobre você" className={field} />
+        <span className="text-xs text-cream/50">{about.length}/60 · aparece no seu perfil público</span>
+      </label>
+      <label className="block">
+        <span className="text-xs uppercase tracking-widest text-cream/60">Data favorita (opcional)</span>
+        <select value={fav} onChange={(e) => setFav(e.target.value)} className={field} style={{ colorScheme: 'dark' }}>
+          <option value="">nenhuma</option>
+          {FAV_DATES.map((d) => <option key={d.key} value={d.key}>{d.emoji} {d.label}</option>)}
+        </select>
+      </label>
+      <div>
+        <span className="text-xs uppercase tracking-widest text-cream/60">Conquistas em destaque (até 3)</span>
+        {ach && !ach.length && <p className="mt-1 text-xs text-cream/55">Desbloqueie conquistas para destacá-las no seu perfil. As outras ficam só com você; os outros veem apenas quantas você tem.</p>}
+        {!!ach?.length && (
+          <>
+            <div className="mt-2 grid grid-cols-3 gap-2">
+              {ach.map((a) => {
+                const on = featured.includes(a.id)
+                return (
+                  <button key={a.id} type="button" onClick={() => toggle(a.id)} aria-pressed={on} className={`flex flex-col items-center gap-1 rounded-xl border p-2 text-center text-[11px] font-bold ${on ? 'border-gold bg-gold/15' : 'border-white/10 bg-white/5'}`}>
+                    <Medal icon={a.icon} size={36} />{a.name}
+                  </button>
+                )
+              })}
+            </div>
+            <p className="mt-1 text-xs text-cream/50">{featured.length}/3 escolhidas · quem visita vê só essas e o total de conquistas.</p>
+          </>
+        )}
+      </div>
+      <label className="block">
         <span className="text-xs uppercase tracking-widest text-cream/60">Música do seu perfil (opcional)</span>
-        <input value={music} maxLength={300} onChange={(e) => setMusic(e.target.value)} placeholder="cole um link do YouTube ou do SoundCloud" inputMode="url" className="mt-1 w-full rounded-xl border border-white/15 bg-black/20 px-4 py-3" />
+        <input value={music} maxLength={300} onChange={(e) => setMusic(e.target.value)} placeholder="cole um link do YouTube ou do SoundCloud" inputMode="url" className={field} />
         <span className="text-xs text-cream/50">Fica no seu perfil em todos os eventos e toca em loop quando alguém visita a sua árvore. Deixe em branco para não ter música.</span>
       </label>
       <p className="text-xs text-cream/50">O username (@{me.username}) não muda, para que os links compartilhados continuem funcionando.</p>

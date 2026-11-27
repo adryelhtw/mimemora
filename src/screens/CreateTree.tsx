@@ -6,17 +6,17 @@ import type { LightsKey, Look, Profile, SceneKey, TopperKey, TreeModel } from '.
 import { DEFAULT_LOOK, loadDraft, saveDraft } from '../lib/treeStore'
 import { Sheet } from '../components/ui'
 import { Link } from 'react-router-dom'
-import { fetchCatalog, fetchInventory } from '../lib/mimos'
+import { fetchCatalog } from '../lib/mimos'
 import type { CatalogItem } from '../lib/mimos'
 
-type Props = { me: Profile; confirmed: Look | null; justCreated: boolean; onConfirm: (l: Look) => Promise<string | null>; onFinish: () => void }
+type Props = { eventYear: number; me: Profile; confirmed: Look | null; justCreated: boolean; onConfirm: (l: Look) => Promise<string | null>; onFinish: () => void }
 
 const Group = ({ title, hint, children }: { title: string; hint: string; children: ReactNode }) => (
   <div className="card p-4"><h2 className="font-display text-lg">{title}</h2><p className="mb-3 text-xs text-cream/60">{hint}</p>{children}</div>
 )
 const opt = (on: boolean) => `rounded-2xl border p-2 text-center text-xs font-bold ${on ? 'border-gold bg-gold/15 ring-2 ring-gold' : 'border-white/10 bg-white/5 hover:bg-white/10'}`
 
-export function CreateTree({ me, confirmed, justCreated, onConfirm, onFinish }: Props) {
+export function CreateTree({ eventYear, me, confirmed, justCreated, onConfirm, onFinish }: Props) {
   const key = me.id ?? me.username
   const [restored] = useState(() => loadDraft(key))
   const [look, setLook] = useState<Look>(restored ?? DEFAULT_LOOK)
@@ -25,18 +25,14 @@ export function CreateTree({ me, confirmed, justCreated, onConfirm, onFinish }: 
   const [err, setErr] = useState('')
   useEffect(() => { if (!confirmed) saveDraft(key, look) }, [look, confirmed, key])
   const [catalog, setCatalog] = useState<CatalogItem[]>([])
-  const [owned, setOwned] = useState<Set<string>>(new Set())
-  useEffect(() => {
-    fetchCatalog().then(setCatalog).catch(() => undefined)
-    if (me.id) fetchInventory(me.id).then((r) => setOwned(new Set(r.map((o) => o.item_id)))).catch(() => undefined)
-  }, [me.id])
-  // Itens especiais precisam ser comprados na loja (o banco também confere isso ao criar a árvore).
-  const priceOf = (kind: string, k: string) => { const it = catalog.find((c) => c.kind === kind && c.key === k); return it && it.tier !== 'inicial' && !owned.has(it.id) ? Math.max(it.price, 1) : 0 }
-  const lockBadge = (kind: string, k: string) => (priceOf(kind, k) > 0 ? <span className="block text-[10px] text-gold">🔒 {priceOf(kind, k)} mimos</span> : null)
+  useEffect(() => { fetchCatalog().then(setCatalog).catch(() => undefined) }, [])
+  // Itens especiais da loja só podem ser usados a partir do ano indicado (Natal 2027); o banco também confere.
+  const priceOf = (kind: string, k: string) => { const it = catalog.find((c) => c.kind === kind && c.key === k); return it && it.tier !== 'inicial' && (it.min_event_year ?? 0) > eventYear ? (it.min_event_year ?? 0) : 0 }
+  const lockBadge = (kind: string, k: string) => (priceOf(kind, k) > 0 ? <span className="block text-[10px] text-gold">🔒 Natal {priceOf(kind, k)}</span> : null)
   useEffect(() => {
     setLook((l) => ({ model: priceOf('model', l.model) ? DEFAULT_LOOK.model : l.model, lights: priceOf('lights', l.lights) ? DEFAULT_LOOK.lights : l.lights, topper: priceOf('topper', l.topper) ? DEFAULT_LOOK.topper : l.topper, scene: priceOf('scene', l.scene) ? DEFAULT_LOOK.scene : l.scene }))
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [catalog, owned])
+  }, [catalog])
   const confirm = async () => {
     setBusy(true); setErr('')
     const e = await onConfirm(look)
@@ -67,7 +63,6 @@ export function CreateTree({ me, confirmed, justCreated, onConfirm, onFinish }: 
         <p className="font-hand text-2xl leading-none text-gold">Natal 2026 · @{me.username}</p>
         <h1 className="font-display text-3xl">Monte a sua árvore de Natal</h1>
         <p className="text-sm text-cream/70">Escolha com carinho: depois de criada, ela não poderá ser trocada.{restored && ' Continuamos de onde você parou.'}</p>
-        <p className="text-xs text-cream/60">Itens com 🔒 são especiais: compre com mimos na <Link to="/loja" className="font-bold text-gold underline">loja</Link> e volte aqui. O seu rascunho fica salvo.</p>
       </header>
       <div className="flex flex-col gap-5 lg:grid lg:grid-cols-[1fr_1.1fr]">
         <div className="sticky top-2 z-20 rounded-3xl border border-white/10 bg-night-2 p-2 lg:top-6 lg:self-start">

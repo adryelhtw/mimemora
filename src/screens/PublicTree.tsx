@@ -9,6 +9,7 @@ import { BlockSheet } from '../components/BlockSheet'
 import { MusicPlayer } from '../components/MusicPlayer'
 import { FollowStats } from '../components/FollowStats'
 import { ProfileFx } from '../components/ProfileFx'
+import { favLabel } from '../lib/dates'
 import { AchievementsStrip } from '../components/AchievementsStrip'
 import { GiftInfoSheet, SendGiftPanel } from '../components/GiftSheets'
 import { Avatar } from '../components/ui'
@@ -88,6 +89,8 @@ export function PublicTree({ me, eventId, onPlace, onNotify }: Props) {
         <p className="font-display text-sm uppercase tracking-[.3em] text-gold">Natal 2026</p>
         <h1 className="font-display text-3xl">Árvore de @{owner.username}</h1>
         <p className="text-sm text-cream/70">{owner.name}</p>
+        {owner.about && <p className="font-hand text-xl text-cream/90">“{owner.about}”</p>}
+        {owner.favoriteDate && <p className="text-xs text-cream/65">data favorita: {favLabel(owner.favoriteDate)}</p>}
         {me && !isMe && <button onClick={toggleFollow} disabled={following === null} className={`mt-1 ${following ? 'rounded-full border border-gold/60 px-4 py-1.5 text-sm font-bold text-gold' : 'pill'}`}>{following ? 'deixar de seguir' : 'seguir'}</button>}
         {me && owner.id && <FollowStats userId={owner.id} refreshKey={following} />}
         {owner.id && <AchievementsStrip userId={owner.id} />}

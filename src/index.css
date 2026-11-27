@@ -43,7 +43,7 @@ body::before { content: ''; position: fixed; inset: 0; z-index: -1; background: 
 @keyframes up { from { transform: translateY(24px); opacity: 0; } }
 /* "Reduzir movimento" do sistema desliga os efeitos maiores da interface. Ficam de fora a neve (tem botão próprio)
    e os detalhes sutis da árvore (balanço e brilho das luzes), para a árvore ser igual no computador e no celular. */
-@media (prefers-reduced-motion: reduce) { *:not(.flake):not(.sway):not(.twinkle):not(.pulse):not(.slot):not(.frame-ring):not(.fx-dot):not(.fx-aurora):not(.burst):not(.burst-dot):not(.letter-open), *::before, *::after { animation: none !important; } }
+@media (prefers-reduced-motion: reduce) { *:not(.flake):not(.sway):not(.twinkle):not(.pulse):not(.slot):not(.frame-ring):not(.fx-dot):not(.fx-star):not(.fx-aurora):not(.burst):not(.burst-dot):not(.letter-open), *::before, *::after { animation: none !important; } }
 
 /* ===== Revisão visual ===== */
 .font-hand { font-family: 'Caveat', cursive; }
@@ -113,3 +113,6 @@ a:not(.pill):not(.cta):hover { text-decoration-color: currentColor; }
 .letter-open { animation: letterIn .55s cubic-bezier(.2,1.2,.4,1) both; }
 @keyframes letterIn { from { transform: rotateX(70deg) scale(.9); opacity: 0; } }
 .wheel { transition: transform 4.2s cubic-bezier(.12,.72,.1,1); }
+.fx-star { position: absolute; animation: fxtw 2.4s ease-in-out infinite; filter: drop-shadow(0 0 4px rgba(255,243,176,.9)); }
+@keyframes fxtw { 0%, 100% { opacity: .2; transform: scale(.6) rotate(0deg); } 50% { opacity: 1; transform: scale(1.15) rotate(20deg); } }
+@media (max-width: 639px) { .pill-compact { padding: .5rem .7rem; } }

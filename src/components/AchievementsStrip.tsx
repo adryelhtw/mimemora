@@ -1,26 +1,27 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Medal } from './Medal'
-import { fetchPublicAchievements } from '../lib/mimos'
+import { fetchAchievementCount, fetchPublicAchievements } from '../lib/mimos'
 
 type Row = { id: string; name: string; icon: string; unlocked_at: string }
 
-// Poucas conquistas em destaque no perfil (as 3 mais recentes). A coleção completa fica em /conquistas.
+// No perfil: só as (até 3) conquistas que a pessoa escolheu destacar + o total, sem dizer quais são as outras.
 export function AchievementsStrip({ userId, own }: { userId: string; own?: boolean }) {
-  const [list, setList] = useState<Row[] | null>(null)
+  const [data, setData] = useState<{ top: Row[]; total: number } | null>(null)
   useEffect(() => {
     let alive = true
-    fetchPublicAchievements(userId).then((r) => alive && setList(r)).catch(() => alive && setList([]))
+    Promise.all([fetchPublicAchievements(userId), fetchAchievementCount(userId)])
+      .then(([top, total]) => alive && setData({ top, total }))
+      .catch(() => alive && setData({ top: [], total: 0 }))
     return () => { alive = false }
   }, [userId])
-  if (!list) return null
-  const top = list.slice(0, 3)
-  if (!top.length && !own) return null
+  if (!data) return null
+  if (!data.total && !own) return null
   return (
-    <div className="flex items-center justify-center gap-2">
-      {top.map((a) => <span key={a.id} title={a.name}><Medal icon={a.icon} size={34} /></span>)}
-      {own && <Link to="/conquistas" className="text-xs font-bold text-cream/70 underline">{top.length ? 'ver coleção' : 'ver conquistas'}</Link>}
-      {!own && list.length > 3 && <span className="text-xs text-cream/60">+{list.length - 3}</span>}
+    <div className="flex flex-wrap items-center justify-center gap-2">
+      {data.top.map((a) => <span key={a.id} title={a.name}><Medal icon={a.icon} size={34} /></span>)}
+      <span className="text-xs text-cream/65">{data.total} {data.total === 1 ? 'conquista' : 'conquistas'}</span>
+      {own && <Link to="/conquistas" className="text-xs font-bold text-cream/70 underline">ver coleção</Link>}
     </div>
   )
 }

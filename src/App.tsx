@@ -177,7 +177,7 @@ function AppRoutes() {
       <Route path="/" element={gate(<Home me={me!} tree={mine!} event={event} onShare={openShare} />)} />
       <Route path="/entrar" element={session ? <Navigate to={username ? '/' : '/bem-vindo'} replace /> : <Login />} />
       <Route path="/bem-vindo" element={!session ? <Navigate to="/entrar" replace /> : username ? <Navigate to="/" replace /> : db ? <Welcome db={db} onDone={reloadProfile} /> : <Notice title="Perfil não encontrado">{`Não consegui carregar o seu perfil. Detalhe técnico: ${profileError || 'sem detalhe'}`}</Notice>} />
-      <Route path="/criar-arvore" element={!session ? <Navigate to="/entrar" replace /> : !username ? <Navigate to="/bem-vindo" replace /> : mine && !justCreated ? <Navigate to="/" replace /> : <CreateTree me={me!} confirmed={look} justCreated={justCreated} onConfirm={confirmTree} onFinish={() => { setJustCreated(false); navigate(takeNext() ?? '/') }} />} />
+      <Route path="/criar-arvore" element={!session ? <Navigate to="/entrar" replace /> : !username ? <Navigate to="/bem-vindo" replace /> : mine && !justCreated ? <Navigate to="/" replace /> : <CreateTree me={me!} eventYear={event.year} confirmed={look} justCreated={justCreated} onConfirm={confirmTree} onFinish={() => { setJustCreated(false); navigate(takeNext() ?? '/') }} />} />
       <Route path="/enfeitar" element={gate(<Decorate me={me!} eventId={event.id} onPlace={place} onNotify={flash} />)} />
       <Route path="/memorias" element={gate(<Memories userId={db?.id ?? ''} />)} />
       <Route path="/eventos" element={gate(<Events tree={mine!} />)} />
@@ -199,20 +199,20 @@ function AppRoutes() {
       <ScrollTop />
       {import.meta.env.DEV && <ErrorBanner />}
       {!bare && (
-        <header className="relative z-10 mx-auto flex max-w-5xl items-center justify-between py-3 pl-4 pr-10 sm:px-4">
-          <Link to="/" aria-label="mimemora, página inicial" className="text-cream"><Logo className="h-7" /></Link>
-          <div className="flex items-center gap-3">
+        <header className="relative z-10 mx-auto flex max-w-5xl items-center justify-between gap-2 py-3 pl-3 pr-10 sm:px-4">
+          <Link to="/" aria-label="mimemora, página inicial" className="shrink-0 text-cream"><Logo className="h-6 sm:h-7" /></Link>
+          <div className="flex shrink-0 items-center gap-2 sm:gap-3">
             {!session && <Link to="/entrar" className="pill">Entrar</Link>}
-            {me && <Link to="/loja" aria-label="Seus mimos e a loja" className="rounded-full border border-gold/40 bg-white/5 px-3 py-1 text-sm font-bold text-gold hover:bg-white/10">✦ {balance ?? '…'}</Link>}
-            {me && mine && <button className="pill" onClick={openShare}><Icon name="share" className="h-4 w-4" />Compartilhar</button>}
-            {me && <Link to="/perfil" aria-label="Meu perfil"><Avatar p={me} size={36} /></Link>}
+            {me && <Link to="/loja" aria-label="Seus mimos e a loja" className="rounded-full border border-gold/40 bg-white/5 px-2.5 py-1.5 text-sm font-bold text-gold hover:bg-white/10">✦ {balance ?? '…'}</Link>}
+            {me && mine && <button className="pill pill-compact" onClick={openShare} aria-label="Compartilhar minha árvore"><Icon name="share" className="h-4 w-4" /><span className="hidden sm:inline">Compartilhar</span></button>}
+            {me && <Link to="/perfil" aria-label="Meu perfil" className="shrink-0"><Avatar p={me} size={42} /></Link>}
           </div>
         </header>
       )}
       <main className={bare ? 'relative z-10' : 'relative z-10 mx-auto max-w-5xl px-4 pb-6 pt-2'}>
         <ErrorBoundary key={pathname}>{content}</ErrorBoundary>
       </main>
-      <footer className="relative z-10 px-4 pb-28 pt-2 text-center text-[11px] text-cream/35">
+      <footer className="relative z-0 px-4 pb-28 pt-2 text-center text-[11px] text-cream/35">
         <a href={`mailto:${CONTACT_EMAIL}`} className="transition hover:text-cream/70">{CONTACT_EMAIL}</a>
       </footer>
       {!bare && session && me && mine && (
