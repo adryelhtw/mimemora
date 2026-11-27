@@ -63,7 +63,10 @@ body::before {
 .pill { display: inline-flex; align-items: center; gap: .4rem; padding: .5rem .9rem; border-radius: .375rem; font-weight: 600; font-size: .85rem; letter-spacing: .01em; color: var(--ink); background: var(--champagne); }
 .glow { position: absolute; inset: 8% 0 0; background: radial-gradient(closest-side, rgba(var(--champagne-rgb),.3), transparent 70%); opacity: .5; }
 .cta { display: flex; align-items: center; justify-content: center; gap: .6rem; width: 100%; padding: 1rem 1.5rem; border-radius: .5rem; font-weight: 600; font-size: 1.05rem; letter-spacing: .01em; color: var(--ink); border: 0; cursor: pointer;
-  background: var(--champagne); box-shadow: none; }
+  background-color: var(--champagne);
+  /* reflexo suave que atravessa o botão de tempos em tempos + anel discreto que pulsa */
+  background-image: linear-gradient(110deg, transparent 35%, rgba(255,255,255,.32) 50%, transparent 65%); background-size: 250% 100%; background-repeat: no-repeat;
+  box-shadow: 0 0 0 0 rgba(var(--champagne-rgb),.5); animation: shimmer 5s ease-in-out infinite, ring 2.6s ease-out infinite; }
 .cta:active { transform: scale(.99); }
 .flake { position: absolute; top: -10px; border-radius: 50%; background: #fff; opacity: .75; animation: fall linear infinite; }
 .sheet { animation: up .25s ease-out; }
@@ -75,6 +78,8 @@ body::before {
 @keyframes sway { 0%,100% { transform: rotate(-3.5deg); } 50% { transform: rotate(3.5deg); } }
 @keyframes twinkle { 0%,100% { opacity: 1; } 50% { opacity: .25; } }
 @keyframes pulse { 0%,100% { transform: scale(1); opacity: .6; } 50% { transform: scale(1.25); opacity: .95; } }
+@keyframes shimmer { 0% { background-position: 0% 0; } 55%, 100% { background-position: 100% 0; } }
+@keyframes ring { 70% { box-shadow: 0 0 0 12px rgba(var(--champagne-rgb),0); } 100% { box-shadow: 0 0 0 0 rgba(var(--champagne-rgb),0); } }
 @keyframes fall { to { transform: translate(30px, 105vh); } }
 @keyframes up { from { transform: translateY(24px); opacity: 0; } }
 /* "Reduzir movimento" do sistema desliga os efeitos maiores da interface. Ficam de fora a neve (tem botão próprio)
@@ -126,7 +131,7 @@ button:disabled, [aria-disabled="true"] { cursor: not-allowed; }
 button, a, .pill, .cta, .card { transition: filter .15s ease, transform .15s ease, background-color .15s ease, opacity .15s ease, box-shadow .15s ease; }
 button:not(:disabled):hover, a.pill:hover { filter: brightness(1.07); }
 button:not(:disabled):active, a.pill:active { transform: scale(.99); }
-.cta:not(:disabled):hover { transform: none; filter: none; background: var(--champagne-hi); }
+.cta:not(:disabled):hover { transform: translateY(-1px); filter: none; background-color: var(--champagne-hi); }
 button.card:not(:disabled):hover { background-color: rgba(236,228,210,.085); }
 a:not(.pill):not(.cta):hover { text-decoration-color: currentColor; }
 
