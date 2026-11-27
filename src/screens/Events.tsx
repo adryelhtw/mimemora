@@ -74,9 +74,10 @@ function PeopleSearch({ me, onNotify }: { me?: Profile | null; onNotify?: (m: st
   )
 }
 
-type Props = { tree: TreeData | null; ended?: boolean; me?: Profile | null; onNotify?: (m: string) => void }
+// reveal = de 25/12 a 31/12: a aba Enfeitar já fechou, então a busca de pessoas passa a viver aqui (e continua depois do encerramento).
+type Props = { tree: TreeData | null; ended?: boolean; reveal?: boolean; me?: Profile | null; onNotify?: (m: string) => void }
 
-export function Events({ tree, ended = false, me, onNotify }: Props) {
+export function Events({ tree, ended = false, reveal = false, me, onNotify }: Props) {
   // Depois do encerramento: o Natal 2026 aparece como concluído, a busca de pessoas passa para cá e a vitrine "Em breve" continua.
   if (ended) {
     return (
@@ -98,22 +99,29 @@ export function Events({ tree, ended = false, me, onNotify }: Props) {
       </section>
     )
   }
-  if (!tree) return null
+  if (!tree && !reveal) return null
   return (
     <section className="space-y-5">
       <h1 className="font-display text-3xl">Eventos</h1>
       <article className="card overflow-hidden p-5" style={{ background: 'linear-gradient(135deg,rgba(31,112,72,.45),rgba(201,23,47,.3))' }}>
         <span className="pill">Acontecendo agora</span>
         <div className="mt-3 grid items-center gap-4 sm:grid-cols-[140px_1fr]">
-          <Tree model={tree.model} lights={tree.lights} topper={tree.topper} scene={tree.scene} base={false} className="mx-auto h-40" />
+          <Tree model={tree?.model ?? 'classica'} lights={tree?.lights} topper={tree?.topper} scene={tree?.scene} base={false} className="mx-auto h-40" />
           <div className="space-y-3">
             <h2 className="font-display text-2xl">Natal 2026</h2>
-            <p className="text-cream/80">Monte sua árvore, receba enfeites com mensagens secretas e abra tudo no dia 25.</p>
-            <Countdown compact />
-            <Link to="/" className="inline-block font-bold text-gold">Ir para minha árvore →</Link>
+            {reveal ? (
+              <p className="text-cream/80">{tree ? 'A revelação já começou: abra as cartas e os presentes da sua árvore. Você ainda pode enviar um Brilho Mágico até 31/12.' : 'A criação de árvores terminou em 25/12. Você ainda pode visitar a árvore de amigos e enviar um Brilho Mágico até 31/12.'}</p>
+            ) : (
+              <>
+                <p className="text-cream/80">Monte sua árvore, receba enfeites com mensagens secretas e abra tudo no dia 25.</p>
+                <Countdown compact />
+              </>
+            )}
+            {tree && <Link to="/" className="inline-block font-bold text-gold">Ir para minha árvore →</Link>}
           </div>
         </div>
       </article>
+      {reveal && <PeopleSearch me={me} onNotify={onNotify} />}
       <UpcomingEvents />
       <Link to="/memorias" className="inline-block font-bold text-gold">Ver eventos passados nas Memórias →</Link>
     </section>

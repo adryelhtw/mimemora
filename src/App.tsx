@@ -191,8 +191,8 @@ function AppRoutes() {
       <Route path="/criar-arvore" element={!session ? <Navigate to="/entrar" replace /> : !username ? <Navigate to="/bem-vindo" replace /> : (mine || !live) && !justCreated ? <Navigate to="/" replace /> : <CreateTree me={me!} eventYear={event.year} confirmed={look} justCreated={justCreated} onConfirm={confirmTree} onFinish={() => { setJustCreated(false); navigate(takeNext() ?? '/') }} />} />
       <Route path="/enfeitar" element={live ? gate(<Decorate me={me!} eventId={event.id} onPlace={place} onNotify={flash} />) : <Navigate to="/" replace />} />
       <Route path="/memorias" element={gateUser(<Memories userId={db?.id ?? ''} username={username ?? ''} />)} />
-      <Route path="/eventos" element={ended ? <Events tree={null} ended me={me} onNotify={flash} /> : gate(<Events tree={mine!} />)} />
-      <Route path="/perfil" element={gate(<ProfileScreen me={me!} tree={mine!} canShare={live} onShare={openShare} onSaved={reloadProfile} onLogout={signOut} onNotify={flash} />)} />
+      <Route path="/eventos" element={ended ? <Events tree={null} ended me={me} onNotify={flash} /> : live ? gate(<Events tree={mine!} />) : gateUser(<Events tree={mine ?? null} reveal me={me} onNotify={flash} />)} />
+      <Route path="/perfil" element={(live ? gate : gateUser)(<ProfileScreen me={me!} tree={mine ?? null} canShare={live} onShare={openShare} onSaved={reloadProfile} onLogout={signOut} onNotify={flash} />)} />
       <Route path="/loja" element={gateUser(<Shop me={me!} onNotify={flash} />)} />
       <Route path="/conquistas" element={gateUser(<Achievements />)} />
       <Route path="/revelacao" element={<Navigate to="/" replace />} />
@@ -226,9 +226,9 @@ function AppRoutes() {
       <footer className="relative z-0 px-4 pb-28 pt-2 text-center text-[11px] text-cream/35">
         <a href={`mailto:${CONTACT_EMAIL}`} className="transition hover:text-cream/70">{CONTACT_EMAIL}</a>
       </footer>
-      {!bare && session && me && (mine || ended) && (
+      {!bare && session && me && (mine || !live) && (
         <nav className="fixed bottom-3 left-1/2 z-40 flex w-[calc(100%-1.5rem)] max-w-md -translate-x-1/2 justify-around rounded-full border border-white/15 bg-night/95 px-2 py-2" aria-label="Navegação principal">
-          {(ended ? (mine ? TABS_ENDED : TABS_ENDED.filter(([to]) => to !== '/perfil')) : live ? TABS : TABS_REVEAL).map(([to, icon, label]) => (
+          {(!mine || ended ? TABS_ENDED : live ? TABS : TABS_REVEAL).map(([to, icon, label]) => (
             <NavLink key={to} to={to} end={to === '/'} className={({ isActive }) => `flex flex-col items-center gap-0.5 rounded-full px-3 py-1 text-[11px] font-bold ${isActive ? 'bg-gold/20 text-gold' : 'text-cream/70'}`}>
               <Icon name={icon} />{label}
             </NavLink>
