@@ -32,3 +32,10 @@ profiles · events · participations · contributions (único: participação+re
 - Supabase free pausa por inatividade; e-mail embutido tem limite baixo → SMTP próprio (ex.: Resend).
 - Vercel Hobby: uso não comercial.
 - Instagram: sem publicação direta pela web. Discord: só copiar link.
+
+## Encerramento do Natal 2026 (patch 20261129)
+- Datas só no banco (events): opens_at = 25/12 00:00 (fim de árvores, enfeites, Presente Misterioso); ends_at = 01/01/2027 00:00 (fim do Brilho Mágico e do evento).
+- Depois de ends_at: Home vira EndedHome (sem contagem/PhaseBar/participação), /memorias lista as memórias, /u/:username = só perfil, /u/:username/natal-2026 = memória (privacidade por memory_public).
+- Permitido depois do fim: ler memórias, open_letter (só leitura), open_gift pendente, set_memory_visibility. Tudo conferido por RPC/RLS, não só no front.
+- Memórias: seções "Presentes recebidos" (memory_gifts) e "Quem iluminou esta árvore?" (memory_glow_givers), dados reais de public.gifts.
+- Não existe evento 2027 no banco; EVENT_SLUG segue fixo em natal-2026.

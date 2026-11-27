@@ -13,7 +13,12 @@ const left = () => {
 export function Countdown({ compact = false }: { compact?: boolean }) {
   const [t, setT] = useState(left)
   useEffect(() => { const i = setInterval(() => setT(left()), 1000); return () => clearInterval(i) }, [])
-  if (t.done) return <p className="countdown text-center font-display text-xl text-gold">É Natal! As mensagens já podem ser abertas 🎁</p>
+  // Chegou a hora: um anel dourado suave pulsa na caixa e o presente balança devagar (desligam sozinhos com "reduzir movimento").
+  if (t.done) return (
+    <p className="countdown nudge text-center font-display text-xl text-gold" style={{ animationDuration: '3.2s' }}>
+      É Natal! As mensagens já podem ser abertas <span aria-hidden="true" className="inline-block" style={{ animation: 'lidbob 3.6s ease-in-out infinite' }}>🎁</span>
+    </p>
+  )
   const hint = t.d === 0 ? 'É hoje, à meia-noite!' : t.d === 1 ? 'Falta só um dia!' : 'Cada dia mais perto do 25'
   const cells: [string, number][] = [['dias', t.d], ['horas', t.h], ['min', t.m], ['seg', t.s]]
   return (

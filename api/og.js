@@ -14,10 +14,25 @@ export default async function handler(req, res) {
     if (r.ok) p = (await r.json())[0] ?? null
   } catch { /* sem perfil: usa a prévia genérica */ }
 
+  // Datas do evento vêm do banco (com as datas oficiais como reserva): a prévia muda sozinha em 25/12 e em 01/01.
+  let opensAt = Date.parse('2026-12-25T03:00:00Z'), endsAt = Date.parse('2027-01-01T03:00:00Z')
+  try {
+    const r = await fetch(`${base}/rest/v1/events?slug=eq.natal-2026&select=opens_at,ends_at&limit=1`, { headers: { apikey: key } })
+    const e = r.ok ? (await r.json())[0] : null
+    if (e) { opensAt = Date.parse(e.opens_at) || opensAt; endsAt = Date.parse(e.ends_at) || endsAt }
+  } catch { /* usa as datas de reserva */ }
+  const now = Date.now()
+  const phase = now >= endsAt ? 'ended' : now >= opensAt ? 'reveal' : 'live'
+
   const url = `${origin}/u/${username}`
-  const title = p ? `árvore de natal de @${p.username} · mimemora` : 'mimemora'
-  const desc = p ? `Deixe um enfeite na árvore de natal de @${p.username}. As mensagens secretas abrem em 25/12.` : 'mimos e memórias para os dias especiais'
-  const image = p?.card_url || (p?.avatar_url?.startsWith('https://') ? p.avatar_url : '')
+  const title = !p ? 'mimemora' : phase === 'ended' ? `@${p.username} · mimemora` : `árvore de natal de @${p.username} · mimemora`
+  const desc = !p ? 'mimos e memórias para os dias especiais'
+    : phase === 'live' ? `Deixe um enfeite na árvore de natal de @${p.username}. As mensagens secretas abrem em 25/12.`
+    : phase === 'reveal' ? `Veja a árvore de natal de @${p.username} no mimemora.`
+    : `Veja o perfil de @${p.username} no mimemora.`
+  // A imagem de convite ("Deixe um enfeite") só vale enquanto dá para enfeitar; depois, só a foto do perfil.
+  const avatar = p?.avatar_url?.startsWith('https://') ? p.avatar_url : ''
+  const image = phase === 'live' ? (p?.card_url || avatar) : avatar
 
   const html = `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8">
 <title>${esc(title)}</title>

@@ -50,7 +50,7 @@ export function Home({ me, tree, event, onShare, onRevealed, onNotify }: Props) 
   const goLetter = (i: number) => { setLetterIdx(i); const o = list[i]; if (o) setSide(o.side) }
   return (
     <>
-      <section className="grid items-center gap-6 lg:grid-cols-2">
+      <section className="grid items-start gap-6 lg:grid-cols-2">
         <div className="relative">
           <div className="glow" style={{ background: `radial-gradient(closest-side, ${MODELS[tree.model].glow}55, transparent 70%)` }} />
           <TreeFlip side={side} model={tree.model} lights={tree.lights} topper={tree.topper} scene={tree.scene} backdrop ornaments={tree.ornaments} gifts={tree.gifts} onGift={setGiftInfo} onPick={opened ? openLetter : setPick} hint={opened} openedIds={openedIds} className="relative mx-auto w-full max-w-[440px]" style={{ maxHeight: '58dvh' }} />
@@ -70,17 +70,17 @@ export function Home({ me, tree, event, onShare, onRevealed, onNotify }: Props) 
           {opened && <RevealPanel tree={tree} eventId={event.id} openedIds={openedIds} onNotify={onNotify} />}
           <Countdown />
           <PhaseBar event={event} />
-          <ShareButton onClick={onShare} />
+          {!opened && <ShareButton onClick={onShare} />}
           <div className="space-y-2">
             <div className="meter" role="progressbar" aria-valuemin={0} aria-valuemax={total} aria-valuenow={n}><span style={{ width: `${Math.round((n / total) * 100)}%` }} /></div>
             <p className="text-sm text-cream/70">
-              {n === 0 ? 'Sua árvore está esperando o primeiro enfeite. Compartilhe o link!' : `${n} de ${total} lugares ocupados · ${total - n} esperando seus amigos`}
+              {opened ? (n === 0 ? 'Ninguém deixou enfeites nesta edição.' : `${n} ${n === 1 ? 'enfeite recebido' : 'enfeites recebidos'}`) : n === 0 ? 'Sua árvore está esperando o primeiro enfeite. Compartilhe o link!' : `${n} de ${total} lugares ocupados · ${total - n} esperando seus amigos`}
             </p>
           </div>
           <Roulette />
           <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-sm lg:justify-start">
-            <Link to="/enfeitar" className="font-bold text-gold">Enfeitar a árvore de um amigo →</Link>
-            <Link to="/loja?aba=indicacoes" className="text-cream/70 underline">convide amigos e ganhe mimos</Link>
+            {!opened && <Link to="/enfeitar" className="font-bold text-gold">Enfeitar a árvore de um amigo →</Link>}
+            {!opened && <Link to="/loja?aba=indicacoes" className="text-cream/70 underline">convide amigos e ganhe mimos</Link>}
             <GiftsReceived gifts={tree.gifts ?? []} />
           </div>
         </div>
