@@ -1,0 +1,11 @@
+{
+  "rewrites": [
+    {
+      "source": "/u/:username",
+      "has": [{ "type": "header", "key": "user-agent", "value": ".*(facebookexternalhit|Facebot|Twitterbot|WhatsApp|TelegramBot|Discordbot|Slackbot|LinkedInBot|Pinterest|Embedly|SkypeUriPreview|vkShare|Googlebot|bingbot|Applebot|redditbot|Iframely|Mastodon).*" }],
+      "missing": [{ "type": "query", "key": "app" }],
+      "destination": "/api/og?username=:username"
+    },
+    { "source": "/((?!api/).*)", "destination": "/index.html" }
+  ]
+}
