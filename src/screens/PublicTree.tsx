@@ -39,6 +39,18 @@ export function PublicTree({ me, eventId, event, onPlace, onNotify }: Props) {
   const [giftInfo, setGiftInfo] = useState<Gift | null>(null)
   const [letterIdx, setLetterIdx] = useState<number | null>(null)
   const [memOpen, setMemOpen] = useState(false)   // botão "Memórias" (perfil de evento encerrado): começa recolhido
+  // Cartas que este visitante já leu (guardado neste aparelho): o círculo de convite em volta do enfeite some e não volta, como acontece com o dono.
+  const seenKey = `cartas-lidas:${me?.id ?? 'visitante'}`
+  const [seen, setSeen] = useState<Set<string>>(new Set())
+  useEffect(() => {
+    try { const raw = localStorage.getItem(seenKey); setSeen(new Set(raw ? (JSON.parse(raw) as string[]) : [])) } catch { setSeen(new Set()) }
+  }, [seenKey])
+  const markSeen = (id: string) => setSeen((s) => {
+    if (s.has(id)) return s
+    const next = new Set(s).add(id)
+    try { localStorage.setItem(seenKey, JSON.stringify([...next])) } catch { /* sem armazenamento */ }
+    return next
+  })
 
   const load = useCallback(async () => {
     try {
@@ -93,7 +105,7 @@ export function PublicTree({ me, eventId, event, onPlace, onNotify }: Props) {
   const list = t ? orderOrnaments(t.ornaments) : []
   const pickLetter = (o: { id: string }) => { const i = list.findIndex((x) => x.id === o.id); if (i >= 0) setLetterIdx(i) }
   const goLetter = (i: number) => { setLetterIdx(i); const o = list[i]; if (o) setSide(o.side) }
-  const readOne = async (o: { id: string }): Promise<LetterData> => ({ body: (await readLetter(o.id)).body, first: false })   // visitante: sempre abertura simples
+  const readOne = async (o: { id: string }): Promise<LetterData> => { const r = await readLetter(o.id); markSeen(o.id); return { body: r.body, first: false } }   // visitante: sempre abertura simples
   const place = async (...a: [Parameters<PlaceFn>[1], string, Side, number]) => {
     const e = await onPlace(t?.id ?? '', ...a)
     await load()   // atualiza as posições ocupadas (e mostra o novo enfeite)
@@ -128,7 +140,7 @@ export function PublicTree({ me, eventId, event, onPlace, onNotify }: Props) {
             </button>
             {memOpen && (
               <div id="memorias-natal-2026" className="space-y-4 border-t border-white/10 p-4 text-center">
-                <div className="relative"><div className="glow" /><TreeFlip side={side} model={t.model} lights={t.lights} topper={t.topper} scene={t.scene} backdrop ornaments={t.ornaments} gifts={t.gifts} onGift={setGiftInfo} onPick={reader ? pickLetter : undefined} hint={reader} className="relative mx-auto w-full max-w-[380px]" /></div>
+                <div className="relative"><div className="glow" /><TreeFlip side={side} model={t.model} lights={t.lights} topper={t.topper} scene={t.scene} backdrop ornaments={t.ornaments} gifts={t.gifts} onGift={setGiftInfo} onPick={reader ? pickLetter : undefined} hint={reader} openedIds={seen} className="relative mx-auto w-full max-w-[380px]" /></div>
                 <SideSwitch side={side} onSide={setSide} counts={counts} />
                 {reader && <p className="text-sm text-gold">Toque nos enfeites para ler as mensagens ✉️</p>}
                 {!me && canRead && <p className="text-sm text-cream/80"><Link to={`/entrar?next=${encodeURIComponent(pathname)}`} className="font-bold text-gold underline">Entre na sua conta</Link> para ler as mensagens dos enfeites.</p>}
@@ -144,7 +156,7 @@ export function PublicTree({ me, eventId, event, onPlace, onNotify }: Props) {
         )
       ) : t ? (
         <>
-          <div className="relative"><div className="glow" /><TreeFlip side={side} model={t.model} lights={t.lights} topper={t.topper} scene={t.scene} backdrop ornaments={t.ornaments} gifts={t.gifts} onGift={setGiftInfo} onPick={reader ? pickLetter : undefined} hint={reader} className="relative mx-auto w-full max-w-[380px]" /></div>
+          <div className="relative"><div className="glow" /><TreeFlip side={side} model={t.model} lights={t.lights} topper={t.topper} scene={t.scene} backdrop ornaments={t.ornaments} gifts={t.gifts} onGift={setGiftInfo} onPick={reader ? pickLetter : undefined} hint={reader} openedIds={seen} className="relative mx-auto w-full max-w-[380px]" /></div>
           <SideSwitch side={side} onSide={setSide} counts={counts} />
           {reader && <p className="text-sm text-gold">Toque nos enfeites para ler as mensagens ✉️</p>}
           {!me && canRead && <p className="text-sm text-cream/80"><Link to={`/entrar?next=${encodeURIComponent(pathname)}`} className="font-bold text-gold underline">Entre na sua conta</Link> para ler as mensagens dos enfeites.</p>}
