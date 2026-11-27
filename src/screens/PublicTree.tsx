@@ -20,6 +20,7 @@ import { nowMs } from '../lib/clock'
 import { orderOrnaments } from '../lib/letters'
 import type { LetterData } from '../lib/letters'
 import { readLetter } from '../lib/mimos'
+import { MemoryExtras } from '../components/MemoryExtras'
 
 type State = { s: 'loading' } | { s: 'notfound' } | { s: 'notree'; owner: Profile } | { s: 'ok'; tree: TreeData }
 type Props = { me: Profile | null; eventId: string; event: EventRow; onPlace: PlaceFn; onNotify: (m: string) => void }
@@ -27,7 +28,7 @@ type Props = { me: Profile | null; eventId: string; event: EventRow; onPlace: Pl
 // Página pública /u/:username (perfil + árvore). As mensagens só chegam, uma a uma, pela função read_letter (o servidor confere se o dono já
 // fez a revelação ou, encerrado o evento, se a memória é pública). Quem tem bloqueio com o dono não encontra a página.
 export function PublicTree({ me, eventId, event, onPlace, onNotify }: Props) {
-  const { username = '' } = useParams()
+  const { username = '', eventSlug } = useParams()
   const navigate = useNavigate()
   const { pathname } = useLocation()
   const [st, setSt] = useState<State>({ s: 'loading' })
@@ -69,7 +70,7 @@ export function PublicTree({ me, eventId, event, onPlace, onNotify }: Props) {
   }, [me, owner?.username])
 
   if (st.s === 'loading') return <p className="py-20 text-center text-cream/70">Carregando a árvore…</p>
-  if (st.s === 'notfound' || !owner) return <p className="py-20 text-center text-cream/70">Não encontramos esse usuário. <Link to="/" className="text-gold">Voltar</Link></p>
+  if (st.s === 'notfound' || !owner || (eventSlug && eventSlug !== event.slug)) return <p className="py-20 text-center text-cream/70">Não encontramos esse usuário. <Link to="/" className="text-gold">Voltar</Link></p>
 
   const toggleFollow = async () => {
     if (!me?.id || !owner.id || following === null) return
@@ -85,6 +86,8 @@ export function PublicTree({ me, eventId, event, onPlace, onNotify }: Props) {
   // Mensagens: só para quem está logado e não é o dono. Em andamento: depois da primeira revelação do dono. Encerrado: se a memória for pública.
   const ended = nowMs() >= new Date(event.ends_at).getTime()
   const opened = nowMs() >= new Date(event.opens_at).getTime()
+  // Depois do encerramento, /u/:username é só o perfil; a árvore do Natal 2026 vive em /u/:username/natal-2026 (memória, com a privacidade da memória).
+  const profileOnly = ended && !eventSlug
   const canRead = !!t && opened && (ended ? !!t.memoryPublic : !!t.revealedAt)
   const reader = !!me && !isMe && canRead
   const list = t ? orderOrnaments(t.ornaments) : []
@@ -102,7 +105,7 @@ export function PublicTree({ me, eventId, event, onPlace, onNotify }: Props) {
       <ProfileFx kind={owner.effect} />
       <div className="flex flex-col items-center gap-1">
         <Avatar p={owner} size={56} />
-        <p className="font-display text-sm uppercase tracking-[.3em] text-gold">{ended ? 'Memória · Natal 2026' : 'Natal 2026'}</p>
+        <p className="font-display text-sm uppercase tracking-[.3em] text-gold">{profileOnly ? 'Perfil' : ended ? 'Memória · Natal 2026' : 'Natal 2026'}</p>
         <h1 className="font-display text-3xl">Árvore de @{owner.username}</h1>
         <p className="text-sm text-cream/70">{owner.name}</p>
         {owner.about && <p className="font-hand text-xl text-cream/90">“{owner.about}”</p>}
@@ -112,7 +115,16 @@ export function PublicTree({ me, eventId, event, onPlace, onNotify }: Props) {
         {owner.id && <AchievementsStrip userId={owner.id} />}
       </div>
 
-      {t ? (
+      {profileOnly ? (
+        <div className="card space-y-3 p-5 text-cream/85">
+          {t ? (
+            <>
+              <p>{isMe ? 'Sua árvore do Natal 2026 virou uma memória.' : `@${owner.username} compartilhou a memória do Natal 2026.`}</p>
+              <Link to={`/u/${owner.username}/${event.slug}`} className="cta">Ver memória do Natal 2026</Link>
+            </>
+          ) : <p>@{owner.username} não tem memórias públicas por aqui.</p>}
+        </div>
+      ) : t ? (
         <>
           <div className="relative"><div className="glow" /><TreeFlip side={side} model={t.model} lights={t.lights} topper={t.topper} scene={t.scene} backdrop ornaments={t.ornaments} gifts={t.gifts} onGift={setGiftInfo} onPick={reader ? pickLetter : undefined} hint={reader} className="relative mx-auto w-full max-w-[380px]" /></div>
           <SideSwitch side={side} onSide={setSide} counts={counts} />
@@ -121,11 +133,13 @@ export function PublicTree({ me, eventId, event, onPlace, onNotify }: Props) {
           {ended
             ? <p className="text-sm text-cream/70">{t.memoryPublic ? 'Memória somente para leitura.' : ''}</p>
             : <Countdown compact />}
-          {!ended && !isMe && !me && <button className="cta" onClick={() => navigate(`/entrar?next=${encodeURIComponent(pathname)}`)}>Entrar para deixar um enfeite</button>}
-          {!ended && !isMe && me && <button className="cta disabled:opacity-60" disabled={done || full} onClick={() => setOpen(true)}>{done ? 'Já enfeitou' : full ? 'Esta árvore já está cheia' : 'Deixar um enfeite'}</button>}
-          {!ended && me && !isMe && <SendGiftPanel me={me} tree={t} onSent={load} onNotify={onNotify} />}
+          {opened && !ended && !isMe && <p className="text-sm text-cream/70">O período de enfeites terminou em 25/12. Você ainda pode enviar um Brilho Mágico até 31/12.</p>}
+          {!opened && !isMe && !me && <button className="cta" onClick={() => navigate(`/entrar?next=${encodeURIComponent(pathname)}`)}>Entrar para deixar um enfeite</button>}
+          {!opened && !isMe && me && <button className="cta disabled:opacity-60" disabled={done || full} onClick={() => setOpen(true)}>{done ? 'Já enfeitou' : full ? 'Esta árvore já está cheia' : 'Deixar um enfeite'}</button>}
+          {!ended && me && !isMe && <SendGiftPanel me={me} tree={t} onSent={load} onNotify={onNotify} boxesOpen={!opened} />}
+          {ended && t.id && <MemoryExtras participationId={t.id} isOwner={isMe} />}
           <GiftInfoSheet gift={giftInfo} onClose={() => setGiftInfo(null)} />
-          {!ended && me && <DecorateSheet target={open ? t : null} me={me} onClose={() => setOpen(false)} onPlace={place} />}
+          {!opened && me && <DecorateSheet target={open ? t : null} me={me} onClose={() => setOpen(false)} onPlace={place} />}
           {reader && <LetterModal list={list} index={letterIdx} onIndex={goLetter} onClose={() => setLetterIdx(null)} load={readOne} />}
         </>
       ) : (

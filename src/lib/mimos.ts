@@ -10,6 +10,8 @@ export type RouletteStatus = { can_spin: boolean; next_at: string; last: SpinRes
 export type AchievementRow = { id: string; event_kind: string | null; name: string | null; description: string | null; icon: string; secret: boolean; unlocked: boolean; unlocked_at: string | null; progress: number | null; target: number | null; reward_mimos: number | null; featured_rank: number | null }
 export type ReferralRow = { username: string; display_name: string | null; avatar_url: string | null; completed: boolean; created_at: string }
 export type RewardRule = { code: string; amount: number; description: string }
+export type MemoryGift = { id: string; kind: 'brilho' | 'misterioso'; sender: string; createdAt: string; expiresAt: string | null; openedAt: string | null; rewardLabel: string | null; rewardMimos: number | null; isOwner: boolean }
+export type GlowGiver = { username: string; displayName: string | null; avatarUrl: string | null; total: number; firstAt: string; lastAt: string }
 export type LetterResult = { body: string; first_time?: boolean; revealed_at?: string | null }
 
 async function rpc<T>(fn: string, args?: Record<string, unknown>): Promise<T> {
@@ -67,6 +69,18 @@ export async function fetchGifts(participationId: string): Promise<Gift[]> {
   const { data, error } = await supabase.from('gifts').select('id,kind,created_at,expires_at,opened_at,sender:profiles!gifts_sender_id_fkey(username)').eq('participation_id', participationId).order('created_at')
   if (error) throw error
   return ((data ?? []) as unknown as GiftRow[]).map((g) => ({ id: g.id, kind: g.kind, from: g.sender?.username ?? '', createdAt: g.created_at, expiresAt: g.expires_at, openedAt: g.opened_at }))
+}
+
+// Memórias: presentes recebidos e quem enviou Brilho Mágico (registros reais de public.gifts; o servidor confere a privacidade da memória).
+type MemoryGiftRow = { id: string; kind: 'brilho' | 'misterioso'; sender: string; created_at: string; expires_at: string | null; opened_at: string | null; reward_label: string | null; reward_mimos: number | null; is_owner: boolean }
+export async function fetchMemoryGifts(participationId: string): Promise<MemoryGift[]> {
+  const rows = await rpc<MemoryGiftRow[]>('memory_gifts', { p_participation: participationId })
+  return (rows ?? []).map((g) => ({ id: g.id, kind: g.kind, sender: g.sender, createdAt: g.created_at, expiresAt: g.expires_at, openedAt: g.opened_at, rewardLabel: g.reward_label, rewardMimos: g.reward_mimos, isOwner: g.is_owner }))
+}
+type GlowRow = { username: string; display_name: string | null; avatar_url: string | null; total: number; first_at: string; last_at: string }
+export async function fetchGlowGivers(participationId: string): Promise<GlowGiver[]> {
+  const rows = await rpc<GlowRow[]>('memory_glow_givers', { p_participation: participationId })
+  return (rows ?? []).map((g) => ({ username: g.username, displayName: g.display_name, avatarUrl: g.avatar_url, total: g.total, firstAt: g.first_at, lastAt: g.last_at }))
 }
 
 // Cartas: o texto nunca é lido direto da tabela. O dono abre pela função open_letter (registra a abertura) e os visitantes

@@ -1,5 +1,6 @@
 import { supabase } from './supabase'
 import { fetchCosmetics, fetchGifts } from './mimos'
+import { nowMs } from './clock'
 import type { Look, Memory, Ornament, OrnamentType, Profile, Side, TreeData } from '../types'
 
 export const EVENT_SLUG = 'natal-2026'
@@ -13,7 +14,7 @@ const MESSAGES: Record<string, string> = {
   slot_taken: 'Alguém acabou de ocupar esse lugar. Escolha outro.',
   already_placed: 'Você já deixou um enfeite nesta árvore.',
   own_tree: 'Você não pode enfeitar a própria árvore.',
-  event_closed: 'O período para enfeitar esta árvore terminou.',
+  event_closed: 'Essa ação não está mais disponível: o período dela no evento terminou.',
   not_authenticated: 'Entre na sua conta para enfeitar.',
   username_required: 'Escolha seu username antes de enfeitar.',
   invalid_message: 'Escreva uma mensagem de 1 a 500 caracteres.',
@@ -165,7 +166,7 @@ export async function fetchMemories(userId: string): Promise<Memory[]> {
     .from('participations')
     .select('id,config,memory_public,events!inner(name,year,slug,ends_at),contributions(id,item_type,side,slot,sender:profiles!contributions_sender_id_fkey(username))')
     .eq('user_id', userId)
-    .lt('events.ends_at', new Date().toISOString())
+    .lt('events.ends_at', new Date(nowMs()).toISOString())
     .order('created_at', { ascending: false })
   if (error) throw error
   return ((data ?? []) as unknown as MRow[]).map((r) => ({

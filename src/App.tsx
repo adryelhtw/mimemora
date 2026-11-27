@@ -17,10 +17,12 @@ import { Logo } from './components/Logo'
 import { ShareSheet } from './components/ShareSheet'
 import { MimosProvider, useMimos } from './lib/mimosContext'
 import { syncClock } from './lib/clock'
+import { phaseOf } from './lib/phase'
 import { claimReferral } from './lib/mimos'
 import { Shop } from './screens/Shop'
 import { Achievements } from './screens/Achievements'
 import { Home } from './screens/Home'
+import { EndedHome, TreeClosed } from './screens/EndedHome'
 import { Login, NEXT_KEY } from './screens/Login'
 import { Welcome } from './screens/Welcome'
 import { ResetPassword } from './screens/ResetPassword'
@@ -32,6 +34,9 @@ import { ProfileScreen } from './screens/Profile'
 import { PublicTree } from './screens/PublicTree'
 
 const TABS: [string, IconName, string][] = [['/', 'tree', 'Árvore'], ['/enfeitar', 'gift', 'Enfeitar'], ['/memorias', 'heart', 'Memórias'], ['/eventos', 'cal', 'Eventos'], ['/perfil', 'user', 'Perfil']]
+// Evento aberto: tudo. A partir de 25/12 não há mais o que enfeitar. Depois de 01/01 o evento acabou: início, memórias, eventos e perfil.
+const TABS_REVEAL = TABS.filter(([to]) => to !== '/enfeitar')
+const TABS_ENDED: [string, IconName, string][] = [['/', 'tree', 'Início'], ['/memorias', 'heart', 'Memórias'], ['/eventos', 'cal', 'Eventos'], ['/perfil', 'user', 'Perfil']]
 
 const SNOW_KEY = 'neve:ligada'
 // Neve ligada por padrão; a escolha feita no botão fica salva.
@@ -56,6 +61,8 @@ function AppRoutes() {
   const { ready, session, profile: db, profileError, reloadProfile, signOut } = useAuth()
   const { balance, refresh: refreshMimos } = useMimos()
   const [event, setEvent] = useState<EventRow | null | undefined>(undefined) // undefined = carregando
+  const [, setTick] = useState(0)   // reavalia a fase do evento sem precisar recarregar a página (ex.: virada para 25/12 e para 01/01)
+  useEffect(() => { const i = setInterval(() => setTick((n) => n + 1), 15000); return () => clearInterval(i) }, [])
   const [eventErr, setEventErr] = useState('')
   const [mineBox, setMineBox] = useState<{ user: string; tree: TreeData | null } | null>(null)
   const [justCreated, setJustCreated] = useState(false)
@@ -166,7 +173,10 @@ function AppRoutes() {
   const loading = !ready || event === undefined || (!!username && mine === undefined)
   const openShare = () => setShare(true)
   const gateUser = (el: ReactElement) => (!session ? <Navigate to="/entrar" replace /> : !username ? <Navigate to="/bem-vindo" replace /> : el)
-  const gate = (el: ReactElement) => (!session ? <Navigate to="/entrar" replace /> : !username ? <Navigate to="/bem-vindo" replace /> : !mine ? <Navigate to="/criar-arvore" replace /> : el)
+  const phase = event ? phaseOf(event) : 'live'
+  const ended = phase === 'ended', live = phase === 'live'
+  // Sem árvore: antes de 25/12 vai criar; de 25/12 a 31/12 vê um aviso; depois de 01/01 cai na nova Home.
+  const gate = (el: ReactElement) => (!session ? <Navigate to="/entrar" replace /> : !username ? <Navigate to="/bem-vindo" replace /> : !mine ? (live ? <Navigate to="/criar-arvore" replace /> : ended ? <Navigate to="/" replace /> : <TreeClosed />) : el)
   const look: Look | null = mine?.lights && mine.topper && mine.scene ? { model: mine.model, lights: mine.lights, topper: mine.topper, scene: mine.scene } : null
 
   let content: ReactElement
@@ -175,14 +185,14 @@ function AppRoutes() {
   else if (!event) content = <Notice title="Evento não encontrado">{`O evento Natal 2026 não foi encontrado no banco. Detalhe técnico: ${eventErr || 'sem detalhe'}`}</Notice>
   else content = (
     <Routes>
-      <Route path="/" element={gate(<Home me={me!} tree={mine!} event={event} onShare={openShare} onRevealed={onRevealed} onNotify={flash} />)} />
-      <Route path="/entrar" element={session ? <Navigate to={username ? '/' : '/bem-vindo'} replace /> : <Login />} />
+      <Route path="/" element={ended ? <EndedHome loggedIn={!!session} hasUsername={!!username} hasTree={!!mine} /> : gate(<Home me={me!} tree={mine!} event={event} onShare={openShare} onRevealed={onRevealed} onNotify={flash} />)} />
+      <Route path="/entrar" element={session ? <Navigate to={username ? '/' : '/bem-vindo'} replace /> : <Login ended={ended} />} />
       <Route path="/bem-vindo" element={!session ? <Navigate to="/entrar" replace /> : username ? <Navigate to="/" replace /> : db ? <Welcome db={db} onDone={reloadProfile} /> : <Notice title="Perfil não encontrado">{`Não consegui carregar o seu perfil. Detalhe técnico: ${profileError || 'sem detalhe'}`}</Notice>} />
-      <Route path="/criar-arvore" element={!session ? <Navigate to="/entrar" replace /> : !username ? <Navigate to="/bem-vindo" replace /> : mine && !justCreated ? <Navigate to="/" replace /> : <CreateTree me={me!} eventYear={event.year} confirmed={look} justCreated={justCreated} onConfirm={confirmTree} onFinish={() => { setJustCreated(false); navigate(takeNext() ?? '/') }} />} />
-      <Route path="/enfeitar" element={gate(<Decorate me={me!} eventId={event.id} onPlace={place} onNotify={flash} />)} />
-      <Route path="/memorias" element={gate(<Memories userId={db?.id ?? ''} username={username ?? ''} />)} />
-      <Route path="/eventos" element={gate(<Events tree={mine!} />)} />
-      <Route path="/perfil" element={gate(<ProfileScreen me={me!} tree={mine!} onShare={openShare} onSaved={reloadProfile} onLogout={signOut} onNotify={flash} />)} />
+      <Route path="/criar-arvore" element={!session ? <Navigate to="/entrar" replace /> : !username ? <Navigate to="/bem-vindo" replace /> : (mine || !live) && !justCreated ? <Navigate to="/" replace /> : <CreateTree me={me!} eventYear={event.year} confirmed={look} justCreated={justCreated} onConfirm={confirmTree} onFinish={() => { setJustCreated(false); navigate(takeNext() ?? '/') }} />} />
+      <Route path="/enfeitar" element={live ? gate(<Decorate me={me!} eventId={event.id} onPlace={place} onNotify={flash} />) : <Navigate to="/" replace />} />
+      <Route path="/memorias" element={gateUser(<Memories userId={db?.id ?? ''} username={username ?? ''} />)} />
+      <Route path="/eventos" element={ended ? <Events tree={null} ended /> : gate(<Events tree={mine!} />)} />
+      <Route path="/perfil" element={gate(<ProfileScreen me={me!} tree={mine!} canShare={live} onShare={openShare} onSaved={reloadProfile} onLogout={signOut} onNotify={flash} />)} />
       <Route path="/loja" element={gateUser(<Shop me={me!} onNotify={flash} />)} />
       <Route path="/conquistas" element={gateUser(<Achievements />)} />
       <Route path="/revelacao" element={<Navigate to="/" replace />} />
@@ -205,7 +215,7 @@ function AppRoutes() {
           <div className="flex shrink-0 items-center gap-2 sm:gap-3">
             {!session && <Link to="/entrar" className="pill">Entrar</Link>}
             {me && <Link to="/loja" aria-label="Seus mimos e a loja" className="rounded-full border border-gold/40 bg-white/5 px-2.5 py-1.5 text-sm font-bold text-gold hover:bg-white/10">✦ {balance ?? '…'}</Link>}
-            {me && mine && <button className="pill pill-compact" onClick={openShare} aria-label="Compartilhar minha árvore"><Icon name="share" className="h-4 w-4" /><span className="hidden sm:inline">Compartilhar</span></button>}
+            {me && mine && live && <button className="pill pill-compact" onClick={openShare} aria-label="Compartilhar minha árvore"><Icon name="share" className="h-4 w-4" /><span className="hidden sm:inline">Compartilhar</span></button>}
             {me && <Link to="/perfil" aria-label="Meu perfil" className="shrink-0"><Avatar p={me} size={42} /></Link>}
           </div>
         </header>
@@ -216,9 +226,9 @@ function AppRoutes() {
       <footer className="relative z-0 px-4 pb-28 pt-2 text-center text-[11px] text-cream/35">
         <a href={`mailto:${CONTACT_EMAIL}`} className="transition hover:text-cream/70">{CONTACT_EMAIL}</a>
       </footer>
-      {!bare && session && me && mine && (
+      {!bare && session && me && (mine || ended) && (
         <nav className="fixed bottom-3 left-1/2 z-40 flex w-[calc(100%-1.5rem)] max-w-md -translate-x-1/2 justify-around rounded-full border border-white/15 bg-night/95 px-2 py-2" aria-label="Navegação principal">
-          {TABS.map(([to, icon, label]) => (
+          {(ended ? (mine ? TABS_ENDED : TABS_ENDED.filter(([to]) => to !== '/perfil')) : live ? TABS : TABS_REVEAL).map(([to, icon, label]) => (
             <NavLink key={to} to={to} end={to === '/'} className={({ isActive }) => `flex flex-col items-center gap-0.5 rounded-full px-3 py-1 text-[11px] font-bold ${isActive ? 'bg-gold/20 text-gold' : 'text-cream/70'}`}>
               <Icon name={icon} />{label}
             </NavLink>
@@ -226,7 +236,7 @@ function AppRoutes() {
         </nav>
       )}
       <Toast msg={toast} />
-      {me && mine && <ShareSheet open={share} onClose={() => setShare(false)} username={me.username} model={mine.model} lights={mine.lights} topper={mine.topper} scene={mine.scene} ornaments={mine.ornaments} />}
+      {me && mine && live && <ShareSheet open={share} onClose={() => setShare(false)} username={me.username} model={mine.model} lights={mine.lights} topper={mine.topper} scene={mine.scene} ornaments={mine.ornaments} />}
     </>
   )
 }

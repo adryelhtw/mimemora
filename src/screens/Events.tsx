@@ -4,7 +4,21 @@ import type { TreeData } from '../types'
 import { Tree } from '../events/natal-2026/Tree'
 import { Countdown } from '../events/natal-2026/Countdown'
 
-export function Events({ tree }: { tree: TreeData }) {
+export function Events({ tree, ended = false }: { tree: TreeData | null; ended?: boolean }) {
+  // Depois do encerramento o Natal 2026 não aparece como evento ativo (só nas Memórias) e nenhum evento futuro é anunciado.
+  if (ended || !tree) {
+    return (
+      <section className="space-y-5">
+        <h1 className="font-display text-3xl">Eventos</h1>
+        <article className="card p-6 text-center">
+          <Tree model="classica" animated={false} base={false} className="mx-auto mb-3 h-24 opacity-50" />
+          <h2 className="font-display text-xl">Nenhum evento acontecendo agora</h2>
+          <p className="mt-1 text-cream/75">Uma nova experiência está sendo preparada. Fique de olho!</p>
+        </article>
+        <Link to="/memorias" className="inline-block font-bold text-gold">Reviver o Natal 2026 nas Memórias →</Link>
+      </section>
+    )
+  }
   return (
     <section className="space-y-5">
       <h1 className="font-display text-3xl">Eventos</h1>
