@@ -102,7 +102,7 @@ export function PublicTree({ me, eventId, event, onPlace, onNotify }: Props) {
 
   return (
     <section className="relative isolate mx-auto max-w-md space-y-5 text-center">
-      <ProfileFx kind={owner.effect} />
+      <ProfileFx kind={owner.effect} full />
       <div className="flex flex-col items-center gap-1">
         <Avatar p={owner} size={56} />
         <p className="font-display text-sm uppercase tracking-[.3em] text-gold">{ended ? 'Perfil' : 'Natal 2026'}</p>

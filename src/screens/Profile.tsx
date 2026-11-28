@@ -31,7 +31,7 @@ export function ProfileScreen({ me, tree, onShare, onSaved, onLogout, onNotify }
   const n = (s: Side) => tree.ornaments.filter((o) => o.side === s).length
   return (
     <section className="relative isolate mx-auto max-w-md space-y-5 text-center">
-      <ProfileFx kind={cos.effect ?? undefined} />
+      <ProfileFx kind={cos.effect ?? undefined} full />
       <div className="flex flex-col items-center gap-2">
         <Avatar p={{ ...me, frame: cos.frame ?? undefined }} size={96} />
         <h1 className="font-display text-3xl">{me.name}</h1>

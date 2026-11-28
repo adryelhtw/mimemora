@@ -3,8 +3,16 @@ import type { CSSProperties } from 'react'
 const dots = (n: number) => Array.from({ length: n }, (_, i) => ({ left: (i * 37 + 11) % 100, size: 3 + (i % 3) * 1.5, dur: 4 + (i % 5) * 1.2, delay: -((i * 7) % 9) }))
 
 // Efeito de perfil equipado (cosmético): camada decorativa atrás do cabeçalho. O pai precisa ser "relative isolate".
-export function ProfileFx({ kind }: { kind?: string }) {
+// `full`: a aurora ocupa a tela inteira (perfil e árvore pública). Sem `full` fica contida no pai (prévia da loja).
+export function ProfileFx({ kind, full }: { kind?: string; full?: boolean }) {
   if (!kind) return null
+  if (kind === 'aurora' && full) {
+    return (
+      <div className="fx-aurora-full pointer-events-none fixed inset-0 -z-10" aria-hidden="true">
+        <i className="fx-a fx-a1" /><i className="fx-a fx-a2" /><i className="fx-a fx-a3" /><b className="fx-curtain" />
+      </div>
+    )
+  }
   return (
     <div className="pointer-events-none absolute inset-x-0 -top-6 -z-10 h-80 overflow-hidden rounded-3xl" aria-hidden="true">
       {kind === 'aurora' && <div className="fx-aurora" />}
