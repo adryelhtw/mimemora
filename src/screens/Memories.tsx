@@ -8,6 +8,7 @@ import { errText, fetchMemories } from '../lib/api'
 import { orderOrnaments } from '../lib/letters'
 import type { LetterData } from '../lib/letters'
 import { openLetter, setMemoryPublic } from '../lib/mimos'
+import { MemoryExtras } from '../components/MemoryExtras'
 
 // Uma memória (somente leitura): a árvore com os enfeites; clicar abre a carta no modal. Nada é gravado depois do fim do evento.
 function MemoryCard({ m, username }: { m: Memory; username: string }) {
@@ -53,6 +54,7 @@ function MemoryCard({ m, username }: { m: Memory; username: string }) {
         {isPublic && username && <Link to={`/u/${username}/${m.eventSlug}`} className="mt-2 inline-block font-bold text-gold">ver como seus amigos veem →</Link>}
         {err && <p className="mt-2 font-bold text-gold" role="alert">{err}</p>}
       </div>
+      <MemoryExtras participationId={m.participationId} isOwner />
       <LetterModal list={list} index={idx} onIndex={goTo} onClose={() => setIdx(null)} load={load} />
     </article>
   )
@@ -78,7 +80,7 @@ export function Memories({ userId, username }: { userId: string; username: strin
         <div className="card p-8 text-center">
           <Tree model="classica" animated={false} base={false} className="mx-auto mb-3 h-24 opacity-60" />
           <p className="font-display text-lg">Suas memórias vão aparecer aqui</p>
-          <p className="text-sm text-cream/70">Quando uma edição terminar, a sua árvore, os enfeites e as mensagens ficam guardados nesta página. O natal 2026 vira memória depois de 1º de janeiro de 2027.</p>
+          <p className="text-sm text-cream/70">Você ainda não tem memórias guardadas. As árvores, os enfeites, os presentes e as mensagens das edições que você participou ficam aqui depois que o evento termina.</p>
         </div>
       )}
       <div className="grid gap-4 md:grid-cols-2">

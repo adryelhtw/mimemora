@@ -14,7 +14,8 @@ const who = (g: Gift) => (g.from ? `@${g.from}` : 'alguém (oculto)')
 
 // Enviar presentes a um amigo (comprados com mimos, além do enfeite tradicional).
 // Regras: um Brilho Mágico por vez em cada árvore; até 5 Presentes Misteriosos por árvore (1 por pessoa).
-export function SendGiftPanel({ me, tree, onSent, onNotify }: { me: Profile; tree: TreeData; onSent: () => void; onNotify: (m: string) => void }) {
+// boxesOpen=false (a partir de 25/12): o Presente Misterioso não pode mais ser enviado; o Brilho Mágico segue até o fim do evento.
+export function SendGiftPanel({ me, tree, onSent, onNotify, boxesOpen = true }: { me: Profile; tree: TreeData; onSent: () => void; onNotify: (m: string) => void; boxesOpen?: boolean }) {
   const { balance, refresh } = useMimos()
   const [catalog, setCatalog] = useState<CatalogItem[]>([])
   const [ask, setAsk] = useState<'brilho' | 'misterioso' | null>(null)
@@ -51,8 +52,8 @@ export function SendGiftPanel({ me, tree, onSent, onNotify }: { me: Profile; tre
       <div className="grid grid-cols-2 gap-2">
         {card('brilho', 'Brilho Mágico', 'Envolve a árvore (frente e verso) com uma luz por 3 dias. Seu nome aparece num selo.', !!glow,
           glow ? `já tem um brilho ativo até ${fmt(glow.expiresAt!)} (de ${who(glow)})` : `${price('brilho')} mimos`)}
-        {card('misterioso', 'Presente Misterioso', 'Uma caixa no pé da árvore. Só abre na revelação, com surpresa.', sentBox || boxes >= MAX_BOXES,
-          sentBox ? 'já enviado ✓' : boxes >= MAX_BOXES ? `o pé da árvore está cheio (${boxes}/${MAX_BOXES})` : `${price('misterioso')} mimos · ${boxes}/${MAX_BOXES} caixas`)}
+        {card('misterioso', 'Presente Misterioso', 'Uma caixa no pé da árvore. Só abre na revelação, com surpresa.', sentBox || boxes >= MAX_BOXES || !boxesOpen,
+          !boxesOpen ? 'o envio terminou em 25/12' : sentBox ? 'já enviado ✓' : boxes >= MAX_BOXES ? `o pé da árvore está cheio (${boxes}/${MAX_BOXES})` : `${price('misterioso')} mimos · ${boxes}/${MAX_BOXES} caixas`)}
       </div>
       <p className="text-center text-[11px] text-cream/50">Cada árvore tem um Brilho Mágico por vez e comporta até {MAX_BOXES} presentes misteriosos (um por pessoa).</p>
       <Sheet open={!!ask} onClose={() => setAsk(null)} title={ask ? KIND[ask] : ''}>

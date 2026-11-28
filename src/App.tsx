@@ -191,7 +191,7 @@ function AppRoutes() {
       <Route path="/criar-arvore" element={!session ? <Navigate to="/entrar" replace /> : !username ? <Navigate to="/bem-vindo" replace /> : (mine || !live) && !justCreated ? <Navigate to="/" replace /> : <CreateTree me={me!} eventYear={event.year} confirmed={look} justCreated={justCreated} onConfirm={confirmTree} onFinish={() => { setJustCreated(false); navigate(takeNext() ?? '/') }} />} />
       <Route path="/enfeitar" element={live ? gate(<Decorate me={me!} eventId={event.id} onPlace={place} onNotify={flash} />) : <Navigate to="/" replace />} />
       <Route path="/memorias" element={gateUser(<Memories userId={db?.id ?? ''} username={username ?? ''} />)} />
-      <Route path="/eventos" element={ended ? <Events tree={null} ended me={me} onNotify={flash} /> : gate(<Events tree={mine!} />)} />
+      <Route path="/eventos" element={ended ? <Events tree={null} ended /> : gate(<Events tree={mine!} />)} />
       <Route path="/perfil" element={gate(<ProfileScreen me={me!} tree={mine!} canShare={live} onShare={openShare} onSaved={reloadProfile} onLogout={signOut} onNotify={flash} />)} />
       <Route path="/loja" element={gateUser(<Shop me={me!} onNotify={flash} />)} />
       <Route path="/conquistas" element={gateUser(<Achievements />)} />

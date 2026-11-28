@@ -18,9 +18,9 @@ import type { AchievementRow } from '../lib/mimos'
 import { Medal } from '../components/Medal'
 import { FAV_DATES, favLabel } from '../lib/dates'
 
-type Props = { me: P; tree: TreeData; onShare: () => void; onSaved: () => Promise<void>; onLogout: () => void; onNotify: (m: string) => void }
+type Props = { me: P; tree: TreeData; canShare?: boolean; onShare: () => void; onSaved: () => Promise<void>; onLogout: () => void; onNotify: (m: string) => void }
 
-export function ProfileScreen({ me, tree, onShare, onSaved, onLogout, onNotify }: Props) {
+export function ProfileScreen({ me, tree, canShare = true, onShare, onSaved, onLogout, onNotify }: Props) {
   const [copied, setCopied] = useState(false)
   const [edit, setEdit] = useState(false)
   const [blocked, setBlocked] = useState(false)
@@ -47,7 +47,7 @@ export function ProfileScreen({ me, tree, onShare, onSaved, onLogout, onNotify }
         <span className="min-w-0 flex-1 truncate text-sm">{link}</span>
         <button onClick={copy} className="pill"><Icon name={copied ? 'check' : 'copy'} className="h-4 w-4" />{copied ? 'Copiado' : 'Copiar'}</button>
       </div>
-      <ShareButton onClick={onShare} />
+      {canShare && <ShareButton onClick={onShare} />}
       {me.music && <MusicPlayer url={me.music} owner={me.username} />}
       <div className="flex flex-wrap justify-center gap-2">
         <Link to="/loja" className="pill">loja e mimos</Link>

@@ -13,7 +13,7 @@ const MESSAGES: Record<string, string> = {
   slot_taken: 'Alguém acabou de ocupar esse lugar. Escolha outro.',
   already_placed: 'Você já deixou um enfeite nesta árvore.',
   own_tree: 'Você não pode enfeitar a própria árvore.',
-  event_closed: 'O período para enfeitar esta árvore terminou.',
+  event_closed: 'Essa ação não está mais disponível: o período dela no evento terminou.',
   not_authenticated: 'Entre na sua conta para enfeitar.',
   username_required: 'Escolha seu username antes de enfeitar.',
   invalid_message: 'Escreva uma mensagem de 1 a 500 caracteres.',

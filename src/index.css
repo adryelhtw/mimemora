@@ -251,3 +251,9 @@ svg[aria-label="mimemora"] path[stroke="#f2c46d"] { stroke: var(--champagne); }
   .env-paper, .env-flap, .env.is-open .env-flap { transition: none !important; }
   .letter-card, .letter-card.simple, .orn-btn { animation: none !important; transition: none !important; }
 }
+
+/* Home pós-encerramento: a caixa lacrada com luz saindo pela fresta (nada do próximo evento é revelado) */
+@keyframes beam { 0%,100% { opacity: .35; transform: scaleY(.92); } 50% { opacity: .8; transform: scaleY(1.04); } }
+@keyframes lidbob { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-3px); } }
+.ended-beam { transform-origin: 50% 100%; animation: beam 3.6s ease-in-out infinite; }
+.ended-lid { animation: lidbob 3.6s ease-in-out infinite; }

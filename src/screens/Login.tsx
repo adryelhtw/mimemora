@@ -15,7 +15,7 @@ const friendly = (m: string) =>
   : /password/i.test(m) ? 'A senha precisa ter pelo menos 8 caracteres.'
   : 'Não foi possível concluir agora. Tente de novo.'
 
-export function Login() {
+export function Login({ ended = false }: { ended?: boolean }) {
   const [params] = useSearchParams()
   const [mode, setMode] = useState<Mode>('entrar')
   const [email, setEmail] = useState('')
@@ -104,7 +104,7 @@ export function Login() {
       {info && <p className="card w-full p-3 text-sm">{info}</p>}
       <p className="min-h-5 text-sm font-bold text-gold" role="alert">{err}</p>
       <div className="pointer-events-none absolute bottom-3 right-3 flex items-end gap-2 opacity-90" aria-hidden="true">
-        <div className="text-right text-[11px] leading-tight text-cream/60"><span className="block uppercase tracking-widest">evento atual</span><span className="font-hand text-lg text-gold">natal 2026</span></div>
+        <div className="text-right text-[11px] leading-tight text-cream/60"><span className="block uppercase tracking-widest">{ended ? 'em breve' : 'evento atual'}</span><span className="font-hand text-lg text-gold">{ended ? 'uma novidade' : 'natal 2026'}</span></div>
         <Tree model="classica" animated={false} className="h-20" />
       </div>
     </section>
