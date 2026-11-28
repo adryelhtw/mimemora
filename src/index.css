@@ -1,0 +1,253 @@
+@import url('https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400&family=Nunito:wght@400;500;600&family=Caveat:wght@500;600&display=swap');
+@import "tailwindcss";
+
+/* ===== Identidade visual =====
+   Céu noturno + papel envelhecido: azul-tinta profundo, off-white quente e champagne.
+   Tokens abaixo; as classes antigas (text-gold, bg-night-2, rounded-3xl...) continuam existindo,
+   só que agora apontam para esta paleta e para esta escala de raios e sombras. */
+@theme {
+  --font-display: 'Newsreader', Georgia, serif;
+  --font-sans: 'Nunito', system-ui, sans-serif;
+
+  --color-night: #0b1930;      /* azul-tinta, fundo */
+  --color-night-2: #132340;    /* superfícies: janelas, painéis */
+  --color-cream: #ece4d2;      /* off-white de papel antigo */
+  --color-gold: #cdb98f;       /* champagne envelhecido (antes: amarelo saturado) */
+  --color-cranberry: #8a3a48;  /* vinho desbotado */
+
+  /* raios menores e mais sóbrios */
+  --radius-md: .25rem;
+  --radius-lg: .3125rem;
+  --radius-xl: .375rem;
+  --radius-2xl: .5rem;
+  --radius-3xl: .75rem;
+
+  /* sombras curtas e foscas, sem brilho */
+  --shadow-lg: 0 6px 18px rgba(3,9,20,.32);
+  --shadow-xl: 0 8px 22px rgba(3,9,20,.36);
+  --shadow-2xl: 0 10px 28px rgba(3,9,20,.4);
+}
+
+:root {
+  --ink: #0b1930;
+  --ink-2: #132340;
+  --paper: #ece4d2;
+  --champagne: #cdb98f;
+  --champagne-hi: #d8c8a4;
+  --champagne-rgb: 205,185,143;
+  --hair: rgba(222,208,176,.16);
+}
+
+body {
+  margin: 0;
+  min-height: 100dvh;
+  color: var(--color-cream);
+  background: #0b1930;
+  font-family: var(--font-sans);
+}
+/* Céu: azul-tinta quase uniforme, com pouquíssimas estrelas bem apagadas. */
+body::before {
+  content: ''; position: fixed; inset: 0; z-index: -1;
+  background:
+    radial-gradient(1px 1px at 12% 18%, rgba(236,228,210,.32), transparent 100%),
+    radial-gradient(1px 1px at 78% 9%, rgba(236,228,210,.26), transparent 100%),
+    radial-gradient(1px 1px at 91% 34%, rgba(236,228,210,.22), transparent 100%),
+    radial-gradient(1px 1px at 24% 52%, rgba(236,228,210,.2), transparent 100%),
+    radial-gradient(1px 1px at 63% 71%, rgba(236,228,210,.2), transparent 100%),
+    radial-gradient(1px 1px at 8% 88%, rgba(236,228,210,.22), transparent 100%),
+    linear-gradient(180deg, #10223f 0%, #0b1930 48%, #08131f 100%);
+}
+::selection { background: rgba(var(--champagne-rgb),.3); }
+
+.card { background: rgba(236,228,210,.045); border: 1px solid var(--hair); border-radius: .625rem; }
+.pill { display: inline-flex; align-items: center; gap: .4rem; padding: .5rem .9rem; border-radius: .375rem; font-weight: 600; font-size: .85rem; letter-spacing: .01em; color: var(--ink); background: var(--champagne); }
+.glow { position: absolute; inset: 8% 0 0; background: radial-gradient(closest-side, rgba(var(--champagne-rgb),.3), transparent 70%); opacity: .5; }
+.cta { display: flex; align-items: center; justify-content: center; gap: .6rem; width: 100%; padding: 1rem 1.5rem; border-radius: .5rem; font-weight: 600; font-size: 1.05rem; letter-spacing: .01em; color: var(--ink); border: 0; cursor: pointer;
+  background-color: var(--champagne);
+  /* reflexo suave que atravessa o botão de tempos em tempos + anel discreto que pulsa */
+  background-image: linear-gradient(110deg, transparent 35%, rgba(255,255,255,.32) 50%, transparent 65%); background-size: 250% 100%; background-repeat: no-repeat;
+  box-shadow: 0 0 0 0 rgba(var(--champagne-rgb),.5); animation: shimmer 5s ease-in-out infinite, ring 2.6s ease-out infinite; }
+.cta:active { transform: scale(.99); }
+.flake { position: absolute; top: -10px; border-radius: 50%; background: #fff; opacity: .75; animation: fall linear infinite; }
+.sheet { animation: up .25s ease-out; }
+
+.sway { transform-box: fill-box; transform-origin: 50% 0; animation: sway 4.2s ease-in-out infinite; }
+.twinkle { animation: twinkle 2.6s ease-in-out infinite; }
+.pulse { transform-box: fill-box; transform-origin: center; animation: pulse 3s ease-in-out infinite; }
+
+@keyframes sway { 0%,100% { transform: rotate(-3.5deg); } 50% { transform: rotate(3.5deg); } }
+@keyframes twinkle { 0%,100% { opacity: 1; } 50% { opacity: .25; } }
+@keyframes pulse { 0%,100% { transform: scale(1); opacity: .6; } 50% { transform: scale(1.25); opacity: .95; } }
+@keyframes shimmer { 0% { background-position: 0% 0; } 55%, 100% { background-position: 100% 0; } }
+@keyframes ring { 70% { box-shadow: 0 0 0 12px rgba(var(--champagne-rgb),0); } 100% { box-shadow: 0 0 0 0 rgba(var(--champagne-rgb),0); } }
+@keyframes fall { to { transform: translate(30px, 105vh); } }
+@keyframes up { from { transform: translateY(24px); opacity: 0; } }
+/* "Reduzir movimento" do sistema desliga os efeitos maiores da interface. Ficam de fora a neve (tem botão próprio)
+   e os detalhes sutis da árvore (balanço e brilho das luzes), para a árvore ser igual no computador e no celular. */
+@media (prefers-reduced-motion: reduce) { *:not(.flake):not(.cta):not(.sway):not(.twinkle):not(.pulse):not(.slot):not(.frame-ring):not(.fx-dot):not(.fx-star):not(.fx-aurora):not(.burst):not(.burst-dot):not(.letter-open), *::before, *::after { animation: none !important; } }
+
+/* ===== Revisão visual ===== */
+.font-hand { font-family: 'Caveat', cursive; font-weight: 500; }
+:focus-visible { outline: 2px solid rgba(var(--champagne-rgb),.85); outline-offset: 2px; }
+.countdown { padding: 1rem; border-radius: .625rem; background: rgba(236,228,210,.035); border: 1px solid rgba(var(--champagne-rgb),.24); }
+.cell { position: relative; overflow: hidden; padding: .7rem .2rem; border-radius: .375rem; background: rgba(6,14,28,.4); border: 1px solid rgba(var(--champagne-rgb),.2); }
+.tick { animation: tick .5s cubic-bezier(.2,.8,.2,1); }
+.share-cta { justify-content: flex-start; gap: .9rem; padding: .85rem 1.3rem; text-align: left; }
+.meter { height: .4rem; overflow: hidden; border-radius: 2px; background: rgba(236,228,210,.1); }
+.meter > span { display: block; height: 100%; border-radius: inherit; background: var(--champagne); transition: width .6s; }
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar { scrollbar-width: none; }
+@keyframes pop { from { transform: scale(.6); opacity: 0; } }
+.pop { animation: pop .7s cubic-bezier(.2,1.4,.4,1); }
+@keyframes tick { from { transform: translateY(-40%); opacity: 0; } }
+
+/* ===== Frente e verso, destaque, contador ===== */
+.flip { perspective: 1400px; }
+.flip-in { position: relative; transform-style: preserve-3d; transition: transform .9s cubic-bezier(.4,.1,.2,1); }
+.flip-in.back { transform: rotateY(180deg); }
+.face { backface-visibility: hidden; -webkit-backface-visibility: hidden; }
+.face.verso { position: absolute; inset: 0; transform: rotateY(180deg); }
+.face[aria-hidden="true"] { pointer-events: none; }
+.slot { animation: slotpulse 1.8s ease-in-out infinite; }
+.nudge { animation: nudge 1.6s ease-in-out infinite; }
+@keyframes slotpulse { 50% { opacity: .45; } }
+@keyframes nudge { 0%,100% { box-shadow: 0 0 0 0 rgba(var(--champagne-rgb),.45); } 70% { box-shadow: 0 0 0 7px rgba(var(--champagne-rgb),0); } }
+.cell { display: flex; align-items: center; justify-content: center; padding: 0; }
+.num { display: block; width: 100%; text-align: center; line-height: 1; font-variant-numeric: lining-nums tabular-nums; padding-top: .07em; }
+@supports (text-box: trim-both cap alphabetic) { .num { text-box: trim-both cap alphabetic; padding-top: 0; } }
+
+/* ===== Neve de fundo ===== */
+.flake { top: 0; left: 0; border-radius: 50%; background: radial-gradient(circle, #fff 0%, rgba(255,255,255,.85) 35%, rgba(255,255,255,0) 72%); will-change: transform; }
+.flake-g { background: none; border-radius: 0; color: #fff; line-height: 1; text-shadow: none; animation-name: fallspin; }
+@keyframes fall { 0% { transform: translate3d(0,-8vh,0); } 50% { transform: translate3d(var(--dx,0px),50vh,0); } 100% { transform: translate3d(0,108vh,0); } }
+@keyframes fallspin { 0% { transform: translate3d(0,-8vh,0) rotate(0); } 50% { transform: translate3d(var(--dx,0px),50vh,0) rotate(180deg); } 100% { transform: translate3d(0,108vh,0) rotate(360deg); } }
+
+/* O nome do site é sempre minúsculo, mesmo dentro de textos em caixa alta. */
+.brand { text-transform: lowercase !important; }
+
+/* ===== Cursor e hover em tudo que é clicável ===== */
+button, [role="button"], a[href], summary, label[for], select, input[type="file"], input[type="checkbox"] { cursor: pointer; }
+button:disabled, [aria-disabled="true"] { cursor: not-allowed; }
+button, a, .pill, .cta, .card { transition: filter .15s ease, transform .15s ease, background-color .15s ease, opacity .15s ease, box-shadow .15s ease; }
+button:not(:disabled):hover, a.pill:hover { filter: brightness(1.07); }
+button:not(:disabled):active, a.pill:active { transform: scale(.99); }
+.cta:not(:disabled):hover { transform: translateY(-1px); filter: none; background-color: var(--champagne-hi); }
+button.card:not(:disabled):hover { background-color: rgba(236,228,210,.085); }
+a:not(.pill):not(.cta):hover { text-decoration-color: currentColor; }
+
+/* ===== Mimos, molduras, efeitos de perfil, revelação ===== */
+.frame-ring { position: absolute; inset: 0; border-radius: 9999px; }
+.frame-dourada { background: conic-gradient(from 0deg, #cdb98f, #eadfc2, #b79d68, #cdb98f); animation: ringspin 5s linear infinite; }
+.frame-geada { background: conic-gradient(from 0deg, #dfe9f2, #9db8cf, #f4f1ea, #9db8cf, #dfe9f2); box-shadow: 0 0 5px 1px rgba(170,200,225,.35); animation: ringspin 8s linear infinite; }
+.frame-coracoes { background: conic-gradient(from 0deg, #d9a3b0, #eed3d9, #c47b8d, #d9a3b0); box-shadow: 0 0 5px 1px rgba(217,163,176,.3); animation: ringspin 6s linear infinite; }
+@keyframes ringspin { to { transform: rotate(360deg); } }
+.fx-dot { position: absolute; top: 100%; border-radius: 50%; animation: fxrise linear infinite; box-shadow: 0 0 4px 1px rgba(var(--champagne-rgb),.45) !important; }
+@keyframes fxrise { to { transform: translateY(-330px); opacity: 0; } }
+.fx-aurora { position: absolute; inset: 0; background: linear-gradient(115deg, rgba(93,242,192,0), rgba(93,242,192,.22), rgba(123,108,255,.22), rgba(255,122,217,.16), rgba(255,122,217,0)); background-size: 200% 100%; animation: fxshift 9s ease-in-out infinite alternate; }
+@keyframes fxshift { to { background-position: 100% 0; } }
+/* Aurora em tela cheia: faixas de luz que derivam devagar + cortinas verticais. Só gradientes e transform (leve no celular). */
+.fx-aurora-full { overflow: hidden; -webkit-mask-image: linear-gradient(180deg, #000 0%, #000 45%, transparent 100%); mask-image: linear-gradient(180deg, #000 0%, #000 45%, transparent 100%); }
+.fx-a { position: absolute; left: 50%; width: max(140vw, 900px); height: 60vh; margin-left: calc(max(140vw, 900px) / -2); will-change: transform, opacity; }
+.fx-a1 { top: -12vh; background: radial-gradient(ellipse 50% 50% at 50% 50%, rgba(93,242,192,.30), transparent 72%); animation: fxdrift1 14s ease-in-out infinite alternate; }
+.fx-a2 { top: 6vh; background: radial-gradient(ellipse 45% 50% at 50% 50%, rgba(123,108,255,.28), transparent 72%); animation: fxdrift2 18s ease-in-out infinite alternate; }
+.fx-a3 { top: -4vh; height: 45vh; background: radial-gradient(ellipse 40% 50% at 50% 50%, rgba(255,122,217,.18), transparent 72%); animation: fxdrift3 22s ease-in-out infinite alternate; }
+.fx-curtain { position: absolute; inset: 0 0 35% 0; opacity: .55;
+  background: repeating-linear-gradient(90deg, rgba(93,242,192,0) 0, rgba(93,242,192,.09) 28px, rgba(123,108,255,.07) 52px, rgba(93,242,192,0) 84px);
+  background-size: 168px 100%; -webkit-mask-image: linear-gradient(180deg, transparent, #000 25%, transparent 95%); mask-image: linear-gradient(180deg, transparent, #000 25%, transparent 95%);
+  animation: fxcurtain 26s linear infinite; }
+@keyframes fxdrift1 { from { transform: translateX(-8vw) scaleY(.9); opacity: .75; } to { transform: translateX(8vw) scaleY(1.15); opacity: 1; } }
+@keyframes fxdrift2 { from { transform: translateX(7vw) scaleY(1.1); opacity: 1; } to { transform: translateX(-9vw) scaleY(.85); opacity: .7; } }
+@keyframes fxdrift3 { from { transform: translateX(-5vw); opacity: .6; } to { transform: translateX(6vw); opacity: 1; } }
+@keyframes fxcurtain { to { background-position: 168px 0; } }
+.burst { animation: burstIn .45s cubic-bezier(.2,1.4,.4,1) both, burstOut .5s ease-in forwards; }
+@keyframes burstIn { from { transform: translateY(-14px) scale(.7); opacity: 0; } }
+@keyframes burstOut { to { transform: translateY(-18px); opacity: 0; } }
+.burst-rare { box-shadow: 0 0 18px 2px rgba(var(--champagne-rgb),.3); }
+.burst-dot { position: absolute; left: 50%; top: 50%; width: 7px; height: 7px; margin: -3px; border-radius: 50%; background: var(--c); animation: burstDot 1.2s ease-out forwards; }
+@keyframes burstDot { from { transform: rotate(var(--a)) translateX(10px); } to { transform: rotate(var(--a)) translateX(110px); opacity: 0; } }
+.letter-open { animation: letterIn .55s cubic-bezier(.2,1.2,.4,1) both; }
+@keyframes letterIn { from { transform: rotateX(70deg) scale(.9); opacity: 0; } }
+.wheel { transition: transform 4.2s cubic-bezier(.12,.72,.1,1); }
+.fx-star { position: absolute; animation: fxtw 2.4s ease-in-out infinite; filter: drop-shadow(0 0 2px rgba(255,243,176,.5)); }
+@keyframes fxtw { 0%, 100% { opacity: .2; transform: scale(.6) rotate(0deg); } 50% { opacity: 1; transform: scale(1.15) rotate(20deg); } }
+@media (max-width: 639px) { .pill-compact { padding: .5rem .7rem; } }
+
+/* ===== Refinamento tipográfico =====
+   Menos negrito: o que era 700/800 vira 600; títulos em serifa ficam em peso médio. */
+.font-bold, .font-extrabold { font-weight: 600; }
+.font-semibold { font-weight: 500; }
+b, strong { font-weight: 600; }
+.font-display { font-optical-sizing: auto; letter-spacing: -.005em; }
+.font-display.font-bold, .font-display.font-extrabold { font-weight: 500; }
+/* Rótulos em caixa alta e espaçados viram texto comum, mais calmo. */
+.uppercase { text-transform: none; }
+.uppercase[class*="tracking-"] { letter-spacing: .03em; }
+.font-display.uppercase { font-style: italic; letter-spacing: .02em; }
+.brand { text-transform: lowercase !important; }
+/* Ícones de traço mais fino. */
+svg[fill="none"][stroke="currentColor"] { stroke-width: 1.5; }
+
+/* ===== Botões: nada de cápsulas =====
+   Só onde "rounded-full" é botão, aba ou etiqueta. Fotos, bolinhas e medalhas continuam redondas. */
+button.rounded-full[class*="px-"], button.rounded-full[class*="py-"],
+a.rounded-full, li.rounded-full { border-radius: .375rem; }
+[role="group"].rounded-full { border-radius: .5rem; }
+nav[aria-label="Navegação principal"] { border-radius: .75rem; background: rgba(11,25,48,.96); border-color: var(--hair); }
+nav[aria-label="Navegação principal"] a.rounded-full { border-radius: .5rem; }
+.share-cta > span:first-child { border-radius: .5rem; background: rgba(11,25,48,.1); }
+
+/* ===== Cores fixas no código, trazidas para a paleta ===== */
+.text-\[\#3a1500\] { color: var(--ink); }
+.bg-\[\#c9172f\] { background-color: var(--color-cranberry); }
+.bg-\[\#25D366\] { background-color: #4f8f6f; }
+button.bg-white { background-color: #efe8d8; }
+
+/* Linhas finas e fundos translúcidos num tom quente, em vez de cinza frio. */
+.border-white\/10 { border-color: rgba(222,208,176,.13); }
+.border-white\/15 { border-color: rgba(222,208,176,.17); }
+.border-white\/20 { border-color: rgba(222,208,176,.22); }
+.bg-white\/5 { background-color: rgba(236,228,210,.045); }
+.bg-white\/10 { background-color: rgba(236,228,210,.08); }
+.hover\:bg-white\/10:hover { background-color: rgba(236,228,210,.08); }
+.ring-2 { --tw-ring-shadow: var(--tw-ring-inset,) 0 0 0 calc(1.5px + var(--tw-ring-offset-width)) var(--tw-ring-color, currentcolor); }
+
+/* ===== Cartões com degradê próprio (Eventos) ===== */
+.card[style*="gradient"] { background: rgba(var(--champagne-rgb),.06) !important; border-color: rgba(var(--champagne-rgb),.26); }
+article.text-white[style*="gradient"] { filter: saturate(.5); text-shadow: none; color: var(--paper); border: 1px solid var(--hair); }
+
+/* ===== Medalhas, roleta e logo ===== */
+span.rounded-full[style*="linear-gradient"]:not([class*="h-12"]) { background: #c4b087 !important; border-color: rgba(236,228,210,.5) !important; box-shadow: none !important; }
+.wheel path[fill="#fbeed3"] { fill: #e4dac3; }
+.wheel path[fill="#f7dbe5"] { fill: #d8ccce; }
+.wheel path[fill="#f2c46d"] { fill: #c9b58d; }
+.wheel path[fill="#ff9fb8"] { fill: #c795a1; }
+.wheel text { fill: var(--ink); font-weight: 600; }
+.wheel circle { stroke: #c9b58d; }
+svg path[fill="#f2c46d"][stroke="#0a1a33"] { fill: #c9b58d; }
+svg[aria-label="mimemora"] path[fill="#ff9fb8"] { fill: #c99aa5; }
+svg[aria-label="mimemora"] path[fill="#f2c46d"] { fill: var(--champagne); }
+svg[aria-label="mimemora"] path[stroke="#f2c46d"] { stroke: var(--champagne); }
+
+/* ----- enfeites clicáveis (convite visual) ----- */
+.orn-hint { opacity: .7; transform-box: fill-box; transform-origin: center; animation: ornHint 2.4s ease-in-out infinite; }
+@keyframes ornHint { 0%, 100% { opacity: .25; transform: scale(.92); } 50% { opacity: .95; transform: scale(1.08); } }
+.orn-btn { transition: filter .15s ease; }
+.orn-btn:hover, .orn-btn:focus-visible { filter: brightness(1.2) drop-shadow(0 0 4px rgba(245, 217, 138, .9)); outline: none; }
+
+/* ----- carta: modal de abertura (envelope → aba → papel → mensagem) ----- */
+.env { position: relative; width: 224px; height: 150px; margin: 70px auto 10px; perspective: 700px; cursor: pointer; }
+.env-back { position: absolute; inset: 0; border-radius: 6px; background: #b9a06a; }
+.env-paper { position: absolute; left: 14px; right: 14px; top: 10px; height: 118px; border-radius: 4px; background: #fbf3e4; z-index: 1; transition: transform .7s cubic-bezier(.3, .9, .3, 1); }
+.env-front { position: absolute; inset: 0; z-index: 2; border-radius: 6px; background: #d3ba80; clip-path: polygon(0 100%, 0 18%, 50% 62%, 100% 18%, 100% 100%); }
+.env-flap { position: absolute; left: 0; right: 0; top: 0; height: 84px; z-index: 3; background: #e0c98f; clip-path: polygon(0 0, 100% 0, 50% 100%); transform-origin: top center; transition: transform .6s ease, z-index 0s linear 0s; }
+.env.is-open .env-flap { transform: rotateX(180deg); z-index: 0; transition: transform .6s ease, z-index 0s linear .3s; }
+.env.is-rise .env-paper { transform: translateY(-84px); }
+.env.is-wait .env-back { animation: envWait 1.2s ease-in-out infinite; }
+@keyframes envWait { 50% { filter: brightness(1.12); } }
+.letter-card { animation: letterFade .7s ease both; }
+.letter-card.simple { animation-duration: .18s; }
+@keyframes letterFade { from { opacity: 0; transform: translateY(8px); } }
+@media (prefers-reduced-motion: reduce) {
+  .env-paper, .env-flap, .env.is-open .env-flap { transition: none !important; }
+  .letter-card, .letter-card.simple, .orn-btn { animation: none !important; transition: none !important; }
+}
